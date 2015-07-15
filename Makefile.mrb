@@ -1,3 +1,7 @@
+##########################################################################################
+# Please note, this Makefile contains settings specific to user mrb on the ARCHER machine.
+##########################################################################################
+
 # Specify a particular compiler with "make COMPILER=pgi", etc.
 # Specify debugging flags with "make MODE=debug"
 
@@ -190,7 +194,7 @@ all: main
 
 SRCDIR = src
 OBJDIR = obj
-BINDIR = /work/z01/z01/mrb/eCSE/0301/minEPOCH/epoch3d/bin
+BINDIR = /work/z01/z01/mrb/eCSE/0301/minEPOCH/bin
 INCDIR = $(SRCDIR)/include
 FC = $(MPIF90)
 DATE := $(shell date +%s)

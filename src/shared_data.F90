@@ -149,6 +149,8 @@ MODULE shared_data
   ! Particles
   !----------------------------------------------------------------------------
 
+  LOGICAL, PARAMETER :: particles_uniformly_distributed = .TRUE.
+  
   ! Time to start the particle push - 0 by default, can be set in the control
   ! block of the deck using 'particle_tstart'.
   REAL(num) :: particle_push_start_time = 0.0_num

@@ -35,7 +35,9 @@ CONTAINS
       DO WHILE (ASSOCIATED(current))
         ! Copy the particle properties out for speed
         part_mc = c * current%mass
-        part_w = current%weight
+        IF (particles_uniformly_distributed) THEN
+          part_w = current%weight
+        ENDIF
         fac = part_mc * part_w * c
 
         part_ux = current%part_p(1) / part_mc

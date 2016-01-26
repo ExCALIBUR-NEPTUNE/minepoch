@@ -33,21 +33,29 @@ CONTAINS
     INTEGER, INTENT(IN) :: deck_state
     REAL(num), PARAMETER :: drift_p = 2.5e-24_num
     REAL(num), PARAMETER :: temp = 273.0_num
-    REAL(num), PARAMETER :: dens = 10.0_num
+    REAL(num), PARAMETER :: dens_max = 10.0_num
+    REAL(num), PARAMETER :: dens_scale = 2.0e9_num
+    REAL(num) :: xc, yc, zc, dens
+    INTEGER :: ix, iy, iz
     TYPE(particle_species), POINTER :: current_species
 
     ! Control
 
-    nx_global = 50
-    ny_global = 50
-    nz_global = 50
+    nx_global = 64
+    ny_global = 64
+    nz_global = 64
     x_min = 0.0_num
     x_max = 5.0e5_num
     y_min = x_min
     y_max = x_max
     z_min = x_min
     z_max = x_max
-    t_end = 0.15_num
+    t_end = 0.07_num
+    !t_end = 0.25_num
+    !t_end = 0.48_num
+    !t_end = 0.074_num
+    !t_end = 0.165_num
+    !t_end = 0.19_num
     stdout_frequency = 10
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -69,7 +77,24 @@ CONTAINS
 
     IF (deck_state /= c_ds_first) THEN
       ! density
-      current_species%density = dens
+      IF (particles_uniformly_distributed) THEN
+        current_species%density = dens_max
+      ELSE
+        DO iz = 1-ng, nz+ng
+          zc = (z(iz) - 0.5_num*z_max)**2
+        
+          DO iy = 1-ng, ny+ng
+            yc = (y(iy) - 0.5_num*y_max)**2
+          
+            DO ix = 1-ng, nx+ng
+              xc = (x(ix) - 0.75_num*x_max)**2
+                        
+              dens = dens_max*EXP(-(xc + yc + zc)/dens_scale)
+              current_species%density(ix,iy,iz) = dens
+            ENDDO
+          ENDDO
+        ENDDO
+      ENDIF
 
       ! drift_x
       current_species%drift(:,:,:,1) = drift_p
@@ -95,7 +120,24 @@ CONTAINS
 
     IF (deck_state /= c_ds_first) THEN
       ! density
-      current_species%density = dens
+      IF (particles_uniformly_distributed) THEN
+        current_species%density = dens_max
+      ELSE
+        DO iz = 1-ng, nz+ng
+          zc = (z(iz) - 0.5_num*z_max)**2
+        
+          DO iy = 1-ng, ny+ng
+            yc = (y(iy) - 0.5_num*y_max)**2
+          
+            DO ix = 1-ng, nx+ng
+              xc = (x(ix) - 0.25_num*x_max)**2
+                        
+              dens = dens_max*EXP(-(xc + yc + zc)/dens_scale)
+              current_species%density(ix,iy,iz) = dens
+            ENDDO
+          ENDDO
+        ENDDO
+      ENDIF
 
       ! drift_x
       current_species%drift(:,:,:,1) = -drift_p

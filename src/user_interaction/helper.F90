@@ -64,8 +64,14 @@ CONTAINS
       species => next_species
       next_species => species%next
 
-      CALL setup_particle_density(species%density, species, &
-          species%density_min, species%density_max)
+      IF (particles_uniformly_distributed) THEN
+        CALL setup_particle_density(species%density, species, &
+            species%density_min, species%density_max)
+      ELSE
+        CALL non_uniform_load_particles(species%density, species, &
+            species%density_min, species%density_max)
+      ENDIF
+      
       CALL setup_particle_temperature(species%temp(:,:,:,1), c_dir_x, species, &
           species%drift(:,:,:,1))
       CALL setup_particle_temperature(species%temp(:,:,:,2), c_dir_y, species, &
@@ -129,6 +135,130 @@ CONTAINS
   END SUBROUTINE deallocate_ic
 
 
+  
+  SUBROUTINE non_uniform_load_particles(density, species, density_min, &
+      density_max)
+
+    REAL(num), DIMENSION(-2:,-2:,-2:), INTENT(INOUT) :: density
+    TYPE(particle_species), POINTER :: species
+    TYPE(particle_list), POINTER :: partlist
+    TYPE(particle), POINTER :: current, next
+    REAL(num), INTENT(INOUT) :: density_min, density_max
+    INTEGER(i8) :: num_valid_cells_local, num_valid_cells_global
+    INTEGER(i8) :: npart_per_cell, npart_left
+    INTEGER(i8) :: cell_part_cnt
+    REAL(num) :: density_total, density_total_global, density_average
+    REAL(num) :: npart_per_cell_average
+    INTEGER(i8) :: npart_this_proc_new, ipart, npart_this_species
+    INTEGER :: ix, iy, iz
+    CHARACTER(LEN=15) :: string
+    
+    
+    num_valid_cells_local = 0
+    density_total = 0.0_num
+
+    DO iz = -2, nz+3
+    DO iy = -2, ny+3
+    DO ix = -2, nx+3
+      IF (density(ix,iy,iz) > density_max) density(ix,iy,iz) = density_max
+    ENDDO ! ix
+    ENDDO ! iy
+    ENDDO ! iz
+
+    DO iz = 1, nz
+    DO iy = 1, ny
+    DO ix = 1, nx
+      IF (density(ix,iy,iz) >= density_min) THEN
+        num_valid_cells_local = num_valid_cells_local + 1
+        density_total = density_total + density(ix,iy,iz)
+      ENDIF
+    ENDDO ! ix
+    ENDDO ! iy
+    ENDDO ! iz
+
+    CALL MPI_ALLREDUCE(num_valid_cells_local, num_valid_cells_global, 1, &
+        MPI_INTEGER8, MPI_SUM, comm, errcode)
+
+    IF (species%npart_per_cell >= 0) THEN
+      npart_per_cell_average = FLOOR(species%npart_per_cell, num)
+    ELSE
+      npart_per_cell_average = REAL(species%count, num) &
+          / REAL(num_valid_cells_global, num)
+    ENDIF
+
+    IF (npart_per_cell_average <= 0) RETURN
+
+    CALL MPI_ALLREDUCE(density_total, density_total_global, 1, mpireal, &
+        MPI_SUM, comm, errcode)
+    density_average = density_total_global / REAL(num_valid_cells_global, num)
+
+    npart_this_proc_new = 0
+    DO iz = 1, nz
+    DO iy = 1, ny
+    DO ix = 1, nx
+      npart_per_cell = NINT(density(ix, iy, iz) / density_average &
+          * npart_per_cell_average)
+      npart_this_proc_new = npart_this_proc_new + npart_per_cell
+    ENDDO ! ix
+    ENDDO ! iy
+    ENDDO ! iz
+
+    partlist => species%attached_list
+    CALL destroy_partlist(partlist)
+    CALL create_allocated_partlist(partlist, npart_this_proc_new)
+    npart_left = npart_this_proc_new
+    current => partlist%head
+    
+    IF (npart_left > 0) THEN
+            
+      ! Randomly place npart_per_cell particles into each valid cell
+      DO iz = 1, nz
+      DO iy = 1, ny
+      DO ix = 1, nx
+        
+        npart_per_cell = NINT(density(ix, iy, iz) / density_average &
+            * npart_per_cell_average)
+
+        ipart = 0
+        DO WHILE(ASSOCIATED(current) .AND. ipart < npart_per_cell)
+          ! Even if particles have per particle charge and mass, assume
+          ! that initially they all have the same charge and mass (user
+          ! can easily over_ride)
+          current%charge = species%charge
+          current%mass = species%mass
+          current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
+          current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
+          current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
+
+          ipart = ipart + 1
+          current => current%next
+
+          ! One particle sucessfully placed
+          npart_left = npart_left - 1
+        ENDDO
+     
+      ENDDO ! ix
+      ENDDO ! iy
+      ENDDO ! iz
+    
+    ENDIF
+
+    
+    CALL MPI_ALLREDUCE(partlist%count, npart_this_species, 1, MPI_INTEGER8, &
+        MPI_SUM, comm, errcode)
+
+    species%count = npart_this_species
+    species%weight = density_total_global * dx * dy * dz / npart_this_species
+    
+    IF (rank == 0) THEN
+      CALL integer_as_string(npart_this_species, string)
+      WRITE(*,*) 'Loaded ', TRIM(ADJUSTL(string)), &
+          ' particles of species ', '"' // TRIM(species%name) // '"'
+    ENDIF
+
+  END SUBROUTINE non_uniform_load_particles
+
+  
 
   ! This subroutine automatically loads a uniform density of pseudoparticles
   SUBROUTINE load_particles(species, load_list)

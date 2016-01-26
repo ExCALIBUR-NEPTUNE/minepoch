@@ -93,6 +93,8 @@ CONTAINS
 
     WRITE(*,*) 'Code is running on ', TRIM(string), ' processing elements'
     WRITE(*,*)
+    WRITE(*,*) 'particles_uniformly_distributed = ', particles_uniformly_distributed
+    WRITE(*,*)
 
   END SUBROUTINE mpi_status_message
 

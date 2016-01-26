@@ -120,13 +120,22 @@ CONTAINS
 
       current => species%attached_list%head
 
-      !DEC$ VECTOR ALWAYS
-      DO ipart = 1, species%attached_list%count
-        next => current%next
-        part_weight = current%weight
+      IF (.NOT. particles_uniformly_distributed) THEN
+        part_weight = species%weight
         fcx = idtyz * part_weight
         fcy = idtxz * part_weight
         fcz = idtxy * part_weight
+      ENDIF
+
+      !DEC$ VECTOR ALWAYS
+      DO ipart = 1, species%attached_list%count
+        next => current%next
+        IF (particles_uniformly_distributed) THEN
+          part_weight = current%weight
+          fcx = idtyz * part_weight
+          fcy = idtxz * part_weight
+          fcz = idtxy * part_weight
+        ENDIF
         part_q   = current%charge
         part_mc  = c * current%mass
         ipart_mc = 1.0_num / part_mc

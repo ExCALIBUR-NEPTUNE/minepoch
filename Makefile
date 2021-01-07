@@ -85,9 +85,9 @@ ifeq ($(strip $(COMPILER)),gfortran)
       endif
     endif
   endif
-  MODULEFLAG = -I/usr/include -I$(OBJDIR) -J$(OBJDIR)
+  MODULEFLAG = -I$(OBJDIR) -J$(OBJDIR)
   INFO_FLAGS = -Wno-conversion -fno-range-check
-  MPIF90 = ftn
+  MPIF90 = mpif90
 endif
 
 # g95

@@ -37,7 +37,7 @@ CONTAINS
       ENDIF
     ENDIF
 
-    CALL time_history(step)
+    IF (write_time_history) CALL time_history(step)
 
     IF (timer_collect) CALL timer_stop(c_timer_io)
 
@@ -151,6 +151,7 @@ CONTAINS
     INTEGER, PARAMETER :: fu = 67
     LOGICAL, PARAMETER :: do_flush = .TRUE.
     INTEGER, PARAMETER :: dump_frequency = 10
+    INTEGER, PARAMETER :: ioerrcode = 404
 
     full_filename = TRIM(data_dir) // '/output.dat'
 
@@ -159,6 +160,10 @@ CONTAINS
       IF (rank == 0) THEN
         OPEN(unit=fu, status='REPLACE', file=TRIM(full_filename), &
             iostat=errcode)
+        IF (errcode /= 0) THEN
+          PRINT*, 'Failed to open file: ', TRIM(full_filename)
+          CALL MPI_ABORT(MPI_COMM_WORLD, ioerrcode, errcode)
+        END IF
         WRITE(fu,'(''# '',a5,99a23)') 'step', 'time', 'dt', &
             'laser_injected', 'laser_absorbed', 'total_particle_energy', &
             'total_field_energy'

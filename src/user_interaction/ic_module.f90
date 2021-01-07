@@ -35,6 +35,7 @@ CONTAINS
     REAL(num), PARAMETER :: temp = 273.0_num
     REAL(num), PARAMETER :: dens_max = 10.0_num
     REAL(num), PARAMETER :: dens_scale = 2.0e9_num
+    INTEGER, PARAMETER :: ppc = 4
     REAL(num) :: xc, yc, zc, dens
     INTEGER :: ix, iy, iz
     TYPE(particle_species), POINTER :: current_species
@@ -42,8 +43,8 @@ CONTAINS
     ! Control
 
     nx_global = 64
-    ny_global = 64
-    nz_global = 64
+    ny_global = 3
+    nz_global = 3
     x_min = 0.0_num
     x_max = 5.0e5_num
     y_min = x_min
@@ -51,11 +52,6 @@ CONTAINS
     z_min = x_min
     z_max = x_max
     t_end = 0.07_num
-    !t_end = 0.25_num
-    !t_end = 0.48_num
-    !t_end = 0.074_num
-    !t_end = 0.165_num
-    !t_end = 0.19_num
     stdout_frequency = 10
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -73,7 +69,7 @@ CONTAINS
     current_species%charge = -1.0_num * q0
 
     ! npart_per_cell
-    current_species%npart_per_cell = 4
+    current_species%npart_per_cell = ppc
 
     IF (deck_state /= c_ds_first) THEN
       ! density

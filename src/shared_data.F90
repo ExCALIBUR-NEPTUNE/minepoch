@@ -203,6 +203,7 @@ MODULE shared_data
     INTEGER(i8) :: count
     TYPE(particle_list) :: attached_list
     LOGICAL :: immobile
+    LOGICAL :: is_driftkinetic
 
     ! Injection of particles
     REAL(num) :: npart_per_cell

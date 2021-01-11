@@ -253,6 +253,7 @@ CONTAINS
     species%npart_per_cell = -1
     species%count_update_step = 0
     species%immobile = .FALSE.
+    species%is_driftkinetic = .FALSE.
     NULLIFY(species%next)
     NULLIFY(species%prev)
     NULLIFY(species%ext_temp_x_min)

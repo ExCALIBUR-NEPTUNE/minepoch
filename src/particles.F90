@@ -7,6 +7,7 @@ MODULE particles
 
 CONTAINS
 
+
   SUBROUTINE push_particles
 
     ! 2nd order accurate particle pusher using parabolic weighting
@@ -113,263 +114,392 @@ CONTAINS
 
     next_species => species_list
     DO ispecies = 1, n_species
-      species => next_species
-      next_species => species%next
+       species => next_species
+       next_species => species%next
 
-      IF (species%immobile) CYCLE
+       IF (species%immobile) CYCLE
 
-      current => species%attached_list%head
+       IF (species%is_driftkinetic) THEN
+          CALL push_particles_dk
+       ELSE
+          CALL push_particles_lorentz
+       END IF
 
-      IF (.NOT. particles_uniformly_distributed) THEN
-        part_weight = species%weight
-        fcx = idtyz * part_weight
-        fcy = idtxz * part_weight
-        fcz = idtxy * part_weight
-      ENDIF
-
-      !DEC$ VECTOR ALWAYS
-      DO ipart = 1, species%attached_list%count
-        next => current%next
-        IF (particles_uniformly_distributed) THEN
-          part_weight = current%weight
-          fcx = idtyz * part_weight
-          fcy = idtxz * part_weight
-          fcz = idtxy * part_weight
-        ENDIF
-        part_q   = current%charge
-        part_mc  = c * current%mass
-        ipart_mc = 1.0_num / part_mc
-        cmratio  = part_q * dtfac * ipart_mc
-        ccmratio = c * cmratio
-
-        ! Copy the particle properties out for speed
-        part_x  = current%part_pos(1) - x_grid_min_local
-        part_y  = current%part_pos(2) - y_grid_min_local
-        part_z  = current%part_pos(3) - z_grid_min_local
-        part_ux = current%part_p(1) * ipart_mc
-        part_uy = current%part_p(2) * ipart_mc
-        part_uz = current%part_p(3) * ipart_mc
-
-        ! Calculate v(t) from p(t)
-        ! See PSC manual page (25-27)
-        root = dtco2 / SQRT(part_ux**2 + part_uy**2 + part_uz**2 + 1.0_num)
-
-        ! Move particles to half timestep position to first order
-        part_x = part_x + part_ux * root
-        part_y = part_y + part_uy * root
-        part_z = part_z + part_uz * root
-
-        ! Grid cell position as a fraction.
-        cell_x_r = part_x * idx
-        cell_y_r = part_y * idy
-        cell_z_r = part_z * idz
-        ! Round cell position to nearest cell
-        cell_x1 = FLOOR(cell_x_r + 0.5_num)
-        ! Calculate fraction of cell between nearest cell boundary and particle
-        cell_frac_x = REAL(cell_x1, num) - cell_x_r
-        cell_x1 = cell_x1 + 1
-
-        cell_y1 = FLOOR(cell_y_r + 0.5_num)
-        cell_frac_y = REAL(cell_y1, num) - cell_y_r
-        cell_y1 = cell_y1 + 1
-
-        cell_z1 = FLOOR(cell_z_r + 0.5_num)
-        cell_frac_z = REAL(cell_z1, num) - cell_z_r
-        cell_z1 = cell_z1 + 1
-
-        ! Particle weight factors as described in the manual, page25
-        ! These weight grid properties onto particles
-        ! Also used to weight particle properties onto grid, used later
-        ! to calculate J
-        ! NOTE: These weights require an additional multiplication factor!
-#include "bspline3/gx.inc"
-
-        ! Now redo shifted by half a cell due to grid stagger.
-        ! Use shifted version for ex in X, ey in Y, ez in Z
-        ! And in Y&Z for bx, X&Z for by, X&Y for bz
-        cell_x2 = FLOOR(cell_x_r)
-        cell_frac_x = REAL(cell_x2, num) - cell_x_r + 0.5_num
-        cell_x2 = cell_x2 + 1
-
-        cell_y2 = FLOOR(cell_y_r)
-        cell_frac_y = REAL(cell_y2, num) - cell_y_r + 0.5_num
-        cell_y2 = cell_y2 + 1
-
-        cell_z2 = FLOOR(cell_z_r)
-        cell_frac_z = REAL(cell_z2, num) - cell_z_r + 0.5_num
-        cell_z2 = cell_z2 + 1
-
-        dcellx = 0
-        dcelly = 0
-        dcellz = 0
-        ! NOTE: These weights require an additional multiplication factor!
-#include "bspline3/hx_dcell.inc"
-
-        ! These are the electric and magnetic fields interpolated to the
-        ! particle position. They have been checked and are correct.
-        ! Actually checking this is messy.
-#include "bspline3/e_part.inc"
-#include "bspline3/b_part.inc"
-
-        ! update particle momenta using weighted fields
-        uxm = part_ux + cmratio * ex_part
-        uym = part_uy + cmratio * ey_part
-        uzm = part_uz + cmratio * ez_part
-
-        ! Half timestep, then use Boris1970 rotation, see Birdsall and Langdon
-        root = ccmratio / SQRT(uxm**2 + uym**2 + uzm**2 + 1.0_num)
-
-        taux = bx_part * root
-        tauy = by_part * root
-        tauz = bz_part * root
-
-        taux2 = taux**2
-        tauy2 = tauy**2
-        tauz2 = tauz**2
-
-        tau = 1.0_num / (1.0_num + taux2 + tauy2 + tauz2)
-
-        uxp = ((1.0_num + taux2 - tauy2 - tauz2) * uxm &
-            + 2.0_num * ((taux * tauy + tauz) * uym &
-            + (taux * tauz - tauy) * uzm)) * tau
-        uyp = ((1.0_num - taux2 + tauy2 - tauz2) * uym &
-            + 2.0_num * ((tauy * tauz + taux) * uzm &
-            + (tauy * taux - tauz) * uxm)) * tau
-        uzp = ((1.0_num - taux2 - tauy2 + tauz2) * uzm &
-            + 2.0_num * ((tauz * taux + tauy) * uxm &
-            + (tauz * tauy - taux) * uym)) * tau
-
-        ! Rotation over, go to full timestep
-        part_ux = uxp + cmratio * ex_part
-        part_uy = uyp + cmratio * ey_part
-        part_uz = uzp + cmratio * ez_part
-
-        ! Calculate particle velocity from particle momentum
-        gamma = SQRT(part_ux**2 + part_uy**2 + part_uz**2 + 1.0_num)
-        root = dtco2 / gamma
-
-        delta_x = part_ux * root
-        delta_y = part_uy * root
-        delta_z = part_uz * root
-
-        ! Move particles to end of time step at 2nd order accuracy
-        part_x = part_x + delta_x
-        part_y = part_y + delta_y
-        part_z = part_z + delta_z
-
-        ! particle has now finished move to end of timestep, so copy back
-        ! into particle array
-        current%part_pos = (/ part_x + x_grid_min_local, &
-            part_y + y_grid_min_local, part_z + z_grid_min_local /)
-        current%part_p   = part_mc * (/ part_ux, part_uy, part_uz /)
-
-        ! Original code calculates densities of electrons, ions and neutrals
-        ! here. This has been removed to reduce memory footprint
-
-        ! Now advance to t+1.5dt to calculate current. This is detailed in
-        ! the manual between pages 37 and 41. The version coded up looks
-        ! completely different to that in the manual, but is equivalent.
-        ! Use t+1.5 dt so that can update J to t+dt at 2nd order
-        part_x = part_x + delta_x
-        part_y = part_y + delta_y
-        part_z = part_z + delta_z
-
-        cell_x_r = part_x * idx
-        cell_y_r = part_y * idy
-        cell_z_r = part_z * idz
-
-        cell_x3 = FLOOR(cell_x_r + 0.5_num)
-        cell_frac_x = REAL(cell_x3, num) - cell_x_r
-        cell_x3 = cell_x3 + 1
-
-        cell_y3 = FLOOR(cell_y_r + 0.5_num)
-        cell_frac_y = REAL(cell_y3, num) - cell_y_r
-        cell_y3 = cell_y3 + 1
-
-        cell_z3 = FLOOR(cell_z_r + 0.5_num)
-        cell_frac_z = REAL(cell_z3, num) - cell_z_r
-        cell_z3 = cell_z3 + 1
-
-        hx = 0.0_num
-        hy = 0.0_num
-        hz = 0.0_num
-
-        dcellx = cell_x3 - cell_x1
-        dcelly = cell_y3 - cell_y1
-        dcellz = cell_z3 - cell_z1
-        ! NOTE: These weights require an additional multiplication factor!
-#include "bspline3/hx_dcell.inc"
-
-        ! Now change Xi1* to be Xi1*-Xi0*. This makes the representation of
-        ! the current update much simpler
-        hx = hx - gx
-        hy = hy - gy
-        hz = hz - gz
-
-        ! Remember that due to CFL condition particle can never cross more
-        ! than one gridcell in one timestep
-
-        xmin = sf_min + (dcellx - 1) / 2
-        xmax = sf_max + (dcellx + 1) / 2
-
-        ymin = sf_min + (dcelly - 1) / 2
-        ymax = sf_max + (dcelly + 1) / 2
-
-        zmin = sf_min + (dcellz - 1) / 2
-        zmax = sf_max + (dcellz + 1) / 2
-
-        fjx = fcx * part_q
-        fjy = fcy * part_q
-        fjz = fcz * part_q
-
-        jzh = 0.0_num
-        DO iz = zmin, zmax
-          cz = cell_z1 + iz
-          zfac1 =         gz(iz) + 0.5_num * hz(iz)
-          zfac2 = third * hz(iz) + 0.5_num * gz(iz)
-
-          gz_iz = gz(iz)
-          hz_iz = hz(iz)
-
-          jyh = 0.0_num
-          DO iy = ymin, ymax
-            cy = cell_y1 + iy
-            yfac1 =         gy(iy) + 0.5_num * hy(iy)
-            yfac2 = third * hy(iy) + 0.5_num * gy(iy)
-
-            hygz = hy(iy) * gz_iz
-            hyhz = hy(iy) * hz_iz
-            yzfac = gy(iy) * zfac1 + hy(iy) * zfac2
-            hzyfac1 = hz_iz * yfac1
-            hzyfac2 = hz_iz * yfac2
-
-            jxh = 0.0_num
-            DO ix = xmin, xmax
-              cx = cell_x1 + ix
-              xfac1 =         gx(ix) + 0.5_num * hx(ix)
-              xfac2 = third * hx(ix) + 0.5_num * gx(ix)
-
-              wx = hx(ix) * yzfac
-              wy = xfac1 * hygz + xfac2 * hyhz
-              wz = gx(ix) * hzyfac1 + hx(ix) * hzyfac2
-
-              ! This is the bit that actually solves d(rho)/dt = -div(J)
-              jxh = jxh - fjx * wx
-              jyh(ix) = jyh(ix) - fjy * wy
-              jzh(ix, iy) = jzh(ix, iy) - fjz * wz
-
-              jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
-              jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
-              jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)
-            ENDDO
-          ENDDO
-        ENDDO
-        current => next
-      ENDDO
     ENDDO
 
     CALL current_bcs
     CALL particle_bcs
+
+  contains
+
+    SUBROUTINE push_particles_lorentz
+
+      current => species%attached_list%head
+
+      IF (.NOT. particles_uniformly_distributed) THEN
+         part_weight = species%weight
+         fcx = idtyz * part_weight
+         fcy = idtxz * part_weight
+         fcz = idtxy * part_weight
+      ENDIF
+
+      !DEC$ VECTOR ALWAYS
+      DO ipart = 1, species%attached_list%count
+         next => current%next
+         IF (particles_uniformly_distributed) THEN
+            part_weight = current%weight
+            fcx = idtyz * part_weight
+            fcy = idtxz * part_weight
+            fcz = idtxy * part_weight
+         ENDIF
+         part_q   = current%charge
+         part_mc  = c * current%mass
+         ipart_mc = 1.0_num / part_mc
+         cmratio  = part_q * dtfac * ipart_mc
+         ccmratio = c * cmratio
+
+         ! Copy the particle properties out for speed
+         part_x  = current%part_pos(1) - x_grid_min_local
+         part_y  = current%part_pos(2) - y_grid_min_local
+         part_z  = current%part_pos(3) - z_grid_min_local
+         part_ux = current%part_p(1) * ipart_mc
+         part_uy = current%part_p(2) * ipart_mc
+         part_uz = current%part_p(3) * ipart_mc
+
+         ! Calculate v(t) from p(t)
+         ! See PSC manual page (25-27)
+         root = dtco2 / SQRT(part_ux**2 + part_uy**2 + part_uz**2 + 1.0_num)
+
+         ! Move particles to half timestep position to first order
+         part_x = part_x + part_ux * root
+         part_y = part_y + part_uy * root
+         part_z = part_z + part_uz * root
+
+         ! Grid cell position as a fraction.
+         cell_x_r = part_x * idx
+         cell_y_r = part_y * idy
+         cell_z_r = part_z * idz
+         ! Round cell position to nearest cell
+         cell_x1 = FLOOR(cell_x_r + 0.5_num)
+         ! Calculate fraction of cell between nearest cell boundary and particle
+         cell_frac_x = REAL(cell_x1, num) - cell_x_r
+         cell_x1 = cell_x1 + 1
+
+         cell_y1 = FLOOR(cell_y_r + 0.5_num)
+         cell_frac_y = REAL(cell_y1, num) - cell_y_r
+         cell_y1 = cell_y1 + 1
+
+         cell_z1 = FLOOR(cell_z_r + 0.5_num)
+         cell_frac_z = REAL(cell_z1, num) - cell_z_r
+         cell_z1 = cell_z1 + 1
+
+         ! Particle weight factors as described in the manual, page25
+         ! These weight grid properties onto particles
+         ! Also used to weight particle properties onto grid, used later
+         ! to calculate J
+         ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/gx.inc"
+
+         ! Now redo shifted by half a cell due to grid stagger.
+         ! Use shifted version for ex in X, ey in Y, ez in Z
+         ! And in Y&Z for bx, X&Z for by, X&Y for bz
+         cell_x2 = FLOOR(cell_x_r)
+         cell_frac_x = REAL(cell_x2, num) - cell_x_r + 0.5_num
+         cell_x2 = cell_x2 + 1
+
+         cell_y2 = FLOOR(cell_y_r)
+         cell_frac_y = REAL(cell_y2, num) - cell_y_r + 0.5_num
+         cell_y2 = cell_y2 + 1
+
+         cell_z2 = FLOOR(cell_z_r)
+         cell_frac_z = REAL(cell_z2, num) - cell_z_r + 0.5_num
+         cell_z2 = cell_z2 + 1
+
+         dcellx = 0
+         dcelly = 0
+         dcellz = 0
+         ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/hx_dcell.inc"
+
+         ! These are the electric and magnetic fields interpolated to the
+         ! particle position. They have been checked and are correct.
+         ! Actually checking this is messy.
+#include "bspline3/e_part.inc"
+#include "bspline3/b_part.inc"
+
+         ! update particle momenta using weighted fields
+         uxm = part_ux + cmratio * ex_part
+         uym = part_uy + cmratio * ey_part
+         uzm = part_uz + cmratio * ez_part
+
+         ! Half timestep, then use Boris1970 rotation, see Birdsall and Langdon
+         root = ccmratio / SQRT(uxm**2 + uym**2 + uzm**2 + 1.0_num)
+
+         taux = bx_part * root
+         tauy = by_part * root
+         tauz = bz_part * root
+
+         taux2 = taux**2
+         tauy2 = tauy**2
+         tauz2 = tauz**2
+
+         tau = 1.0_num / (1.0_num + taux2 + tauy2 + tauz2)
+
+         uxp = ((1.0_num + taux2 - tauy2 - tauz2) * uxm &
+              + 2.0_num * ((taux * tauy + tauz) * uym &
+              + (taux * tauz - tauy) * uzm)) * tau
+         uyp = ((1.0_num - taux2 + tauy2 - tauz2) * uym &
+              + 2.0_num * ((tauy * tauz + taux) * uzm &
+              + (tauy * taux - tauz) * uxm)) * tau
+         uzp = ((1.0_num - taux2 - tauy2 + tauz2) * uzm &
+              + 2.0_num * ((tauz * taux + tauy) * uxm &
+              + (tauz * tauy - taux) * uym)) * tau
+
+         ! Rotation over, go to full timestep
+         part_ux = uxp + cmratio * ex_part
+         part_uy = uyp + cmratio * ey_part
+         part_uz = uzp + cmratio * ez_part
+
+         ! Calculate particle velocity from particle momentum
+         gamma = SQRT(part_ux**2 + part_uy**2 + part_uz**2 + 1.0_num)
+         root = dtco2 / gamma
+
+         delta_x = part_ux * root
+         delta_y = part_uy * root
+         delta_z = part_uz * root
+
+         ! Move particles to end of time step at 2nd order accuracy
+         part_x = part_x + delta_x
+         part_y = part_y + delta_y
+         part_z = part_z + delta_z
+
+         ! particle has now finished move to end of timestep, so copy back
+         ! into particle array
+         current%part_pos = (/ part_x + x_grid_min_local, &
+              part_y + y_grid_min_local, part_z + z_grid_min_local /)
+         current%part_p   = part_mc * (/ part_ux, part_uy, part_uz /)
+
+         ! Original code calculates densities of electrons, ions and neutrals
+         ! here. This has been removed to reduce memory footprint
+
+         ! Now advance to t+1.5dt to calculate current. This is detailed in
+         ! the manual between pages 37 and 41. The version coded up looks
+         ! completely different to that in the manual, but is equivalent.
+         ! Use t+1.5 dt so that can update J to t+dt at 2nd order
+         part_x = part_x + delta_x
+         part_y = part_y + delta_y
+         part_z = part_z + delta_z
+
+         cell_x_r = part_x * idx
+         cell_y_r = part_y * idy
+         cell_z_r = part_z * idz
+
+         cell_x3 = FLOOR(cell_x_r + 0.5_num)
+         cell_frac_x = REAL(cell_x3, num) - cell_x_r
+         cell_x3 = cell_x3 + 1
+
+         cell_y3 = FLOOR(cell_y_r + 0.5_num)
+         cell_frac_y = REAL(cell_y3, num) - cell_y_r
+         cell_y3 = cell_y3 + 1
+
+         cell_z3 = FLOOR(cell_z_r + 0.5_num)
+         cell_frac_z = REAL(cell_z3, num) - cell_z_r
+         cell_z3 = cell_z3 + 1
+
+         hx = 0.0_num
+         hy = 0.0_num
+         hz = 0.0_num
+
+         dcellx = cell_x3 - cell_x1
+         dcelly = cell_y3 - cell_y1
+         dcellz = cell_z3 - cell_z1
+         ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/hx_dcell.inc"
+
+         ! Now change Xi1* to be Xi1*-Xi0*. This makes the representation of
+         ! the current update much simpler
+         hx = hx - gx
+         hy = hy - gy
+         hz = hz - gz
+
+         ! Remember that due to CFL condition particle can never cross more
+         ! than one gridcell in one timestep
+
+         xmin = sf_min + (dcellx - 1) / 2
+         xmax = sf_max + (dcellx + 1) / 2
+
+         ymin = sf_min + (dcelly - 1) / 2
+         ymax = sf_max + (dcelly + 1) / 2
+
+         zmin = sf_min + (dcellz - 1) / 2
+         zmax = sf_max + (dcellz + 1) / 2
+
+         fjx = fcx * part_q
+         fjy = fcy * part_q
+         fjz = fcz * part_q
+
+         jzh = 0.0_num
+         DO iz = zmin, zmax
+            cz = cell_z1 + iz
+            zfac1 =         gz(iz) + 0.5_num * hz(iz)
+            zfac2 = third * hz(iz) + 0.5_num * gz(iz)
+
+            gz_iz = gz(iz)
+            hz_iz = hz(iz)
+
+            jyh = 0.0_num
+            DO iy = ymin, ymax
+               cy = cell_y1 + iy
+               yfac1 =         gy(iy) + 0.5_num * hy(iy)
+               yfac2 = third * hy(iy) + 0.5_num * gy(iy)
+
+               hygz = hy(iy) * gz_iz
+               hyhz = hy(iy) * hz_iz
+               yzfac = gy(iy) * zfac1 + hy(iy) * zfac2
+               hzyfac1 = hz_iz * yfac1
+               hzyfac2 = hz_iz * yfac2
+
+               jxh = 0.0_num
+               DO ix = xmin, xmax
+                  cx = cell_x1 + ix
+                  xfac1 =         gx(ix) + 0.5_num * hx(ix)
+                  xfac2 = third * hx(ix) + 0.5_num * gx(ix)
+
+                  wx = hx(ix) * yzfac
+                  wy = xfac1 * hygz + xfac2 * hyhz
+                  wz = gx(ix) * hzyfac1 + hx(ix) * hzyfac2
+
+                  ! This is the bit that actually solves d(rho)/dt = -div(J)
+                  jxh = jxh - fjx * wx
+                  jyh(ix) = jyh(ix) - fjy * wy
+                  jzh(ix, iy) = jzh(ix, iy) - fjz * wz
+
+                  jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
+                  jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
+                  jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)
+               ENDDO
+            ENDDO
+         ENDDO
+         current => next
+      ENDDO
+
+    END SUBROUTINE push_particles_lorentz
+
+    SUBROUTINE push_particles_dk
+      REAL(num), DIMENSION(3) :: dRdt
+      REAL(num), DIMENSION(3) :: bdir, drifts_mu, drifts_vpll
+      REAL(num), DIMENSION(3) :: drifts_ExB
+      REAL(num) :: part_mu, part_u, bdotBmag
+
+      current => species%attached_list%head
+
+      IF (.NOT. particles_uniformly_distributed) THEN
+         part_weight = species%weight
+         fcx = idtyz * part_weight
+         fcy = idtxz * part_weight
+         fcz = idtxy * part_weight
+      ENDIF
+
+      !DEC$ VECTOR ALWAYS
+      DO ipart = 1, species%attached_list%count
+         next => current%next
+         IF (particles_uniformly_distributed) THEN
+            part_weight = current%weight
+            fcx = idtyz * part_weight
+            fcy = idtxz * part_weight
+            fcz = idtxy * part_weight
+         ENDIF
+
+         part_q   = current%charge
+         part_mc  = c * current%mass
+         ipart_mc = 1.0_num / part_mc
+         cmratio  = part_q * dtfac * ipart_mc
+         ccmratio = c * cmratio
+
+         ! Copy the particle properties out for speed
+         part_x  = current%part_pos(1) - x_grid_min_local
+         part_y  = current%part_pos(2) - y_grid_min_local
+         part_z  = current%part_pos(3) - z_grid_min_local
+
+         part_u   = current%part_p(1) * ipart_mc
+         part_mu  = current%part_p(2) * ipart_mc
+
+         ! These are the electric and magnetic fields interpolated to the
+         ! particle position. They have been checked and are correct.
+         ! Actually checking this is messy.
+#include "bspline3/e_part.inc"
+#include "bspline3/b_part.inc"
+         ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/hx_dcell.inc"
+
+         !OK, so what we need is mostly the derivatives of the magnetic field, plus some vector algebra stuff to do cross products etc.
+         ! Look at the finite difference stuff in bx_part, and figure out how to take a spatial derivative of it.
+         ! Thoughts: enable fixed E, B fields would help a lot to get particle tracing right. Ignore B_perp would also make things easier. Can we do Esirkepov based on guiding centre? (dont see why not)
+         ! Probably want to do electrostatic somehow: couple DK particles to ES field only?
+         ! Otherwise, need full current description. Curl of shape function for magnetisation current?
+         CALL get_drifts(current%part_pos,bdir, drifts_ExB, &
+                    &  drifts_mu,drifts_vpll, bdotBmag)
+
+         dRdt = bdir * part_u &
+              & + drifts_ExB + drifts_mu*part_mu + drifts_vpll*part_u
+
+         ! Move particles to half timestep position to first order
+         part_x = part_x + dRdt(1) * dt
+         part_y = part_y + dRdt(2) * dt
+         part_z = part_z + dRdt(3) * dt
+
+         part_u = part_u + part_mu * bdotBmag * dt
+
+         ! particle has now finished move to end of timestep, so copy back
+         ! into particle array
+         current%part_pos = (/ part_x + x_grid_min_local, &
+              part_y + y_grid_min_local, part_z + z_grid_min_local /)
+         current%part_p   = (/ part_u, part_mu, 0.0d0 /)
+
+         current => next
+      ENDDO
+
+    END SUBROUTINE push_particles_dk
+
+    SUBROUTINE get_drifts(pos,ExB,bdir,drifts_mu,drifts_vpll,bdotgradBmag)    
+      !    & cell_frac_x, cell_frac_y, cell_frac_z,gx,gy,gz,hx,hy,hz,   &
+      !    & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
+      !     REAL, INTENT(IN) :: cell_frac_x, cell_frac_y, cell_frac_z
+      !     REAL, INTENT(IN) :: cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2
+      !     REAL, DIMENSION(DIMX), INTENT(INOUT) :: gx,gy,gz,hx,hy,hz
+      REAL(num), DIMENSION(3), INTENT(INOUT) :: pos, ExB
+      REAL(num), DIMENSION(3), INTENT(OUT)   :: & 
+                          & drifts_mu,drifts_vpll
+      REAL(num), INTENT(OUT)   :: bdotgradBmag 
+ 
+      REAL(num), DIMENSION(3) :: Bdir
+      REAL(num) :: Bsq,Bnorm
+
+      dcellx = 0
+      dcelly = 0
+      dcellz = 0
+      ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/hx_dcell.inc"
+
+      ! These are the electric and magnetic fields interpolated to the
+      ! particle position. They have been checked and are correct.
+      ! Actually checking this is messy.
+#include "bspline3/e_part.inc"
+#include "bspline3/b_part.inc"
+
+      Bsq = (bx_part*bx_part+by_part*by_part+bz_part*bz_part)
+      Bnorm = sqrt(Bsq)
+
+      bdir(1) = bx_part/Bnorm
+      bdir(2) = by_part/Bnorm
+      bdir(3) = bz_part/Bnorm
+
+      ExB(1) = (ey_part*bz_part - ez_part*by_part)/Bsq 
+      ExB(2) = (ez_part*bx_part - ex_part*bz_part)/Bsq 
+      ExB(3) = (ex_part*by_part - ey_part*bx_part)/Bsq 
+
+      bdotgradBmag = 0.0
+    END SUBROUTINE get_drifts
 
   END SUBROUTINE push_particles
 

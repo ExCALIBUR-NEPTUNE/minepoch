@@ -52,10 +52,14 @@ CONTAINS
     ! F(j-1) * gmx + F(j) * g0x + F(j+1) * gpx
     ! Defined at the particle position
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    ! Spatial derivative of same
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
 
     ! Defined at the particle position - 0.5 grid cell in each direction
     ! This is to deal with the grid stagger
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
+    ! Spatial derivative of same
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
 
     ! Fields at particle location
     REAL(num) :: ex_part, ey_part, ez_part, bx_part, by_part, bz_part
@@ -85,6 +89,7 @@ CONTAINS
     ! Particle weighting multiplication factor
     REAL(num) :: cf2
     REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
+    REAL(num), DIMENSION(3,3) :: Btens ! Btens(i,j) derivative of j_th component of B field along i direction.
 
     TYPE(particle), POINTER :: current, next
     TYPE(particle_species), POINTER :: species, next_species
@@ -390,7 +395,6 @@ CONTAINS
       REAL(num), DIMENSION(3) :: bdir, drifts_mu, drifts_vpll
       REAL(num), DIMENSION(3) :: drifts_ExB
       REAL(num) :: part_mu, part_u, bdotBmag
-
       current => species%attached_list%head
 
       IF (.NOT. particles_uniformly_distributed) THEN
@@ -424,13 +428,70 @@ CONTAINS
          part_u   = current%part_p(1) * ipart_mc
          part_mu  = current%part_p(2) * ipart_mc
 
+
+!!!!!!!!!!!!!!!! Field calculation
+         ! Grid cell position as a fraction.
+         cell_x_r = part_x * idx
+         cell_y_r = part_y * idy
+         cell_z_r = part_z * idz
+         ! Round cell position to nearest cell
+         cell_x1 = FLOOR(cell_x_r + 0.5_num)
+         ! Calculate fraction of cell between nearest cell boundary and particle
+         cell_frac_x = REAL(cell_x1, num) - cell_x_r
+         cell_x1 = cell_x1 + 1
+
+         cell_y1 = FLOOR(cell_y_r + 0.5_num)
+         cell_frac_y = REAL(cell_y1, num) - cell_y_r
+         cell_y1 = cell_y1 + 1
+
+         cell_z1 = FLOOR(cell_z_r + 0.5_num)
+         cell_frac_z = REAL(cell_z1, num) - cell_z_r
+         cell_z1 = cell_z1 + 1
+
+         dcellx = cell_x3 - cell_x1
+         dcelly = cell_y3 - cell_y1
+         dcellz = cell_z3 - cell_z1
+
+         ! Particle weight factors as described in the manual, page25
+         ! These weight grid properties onto particles
+         ! Also used to weight particle properties onto grid, used later
+         ! to calculate J
+         ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/gx.inc"
+         CALL h_derivs(gdx,gx,0,cell_frac_x,idx)
+         CALL h_derivs(gdy,gy,0,cell_frac_y,idy)
+         CALL h_derivs(gdz,gz,0,cell_frac_z,idz)
+
+         ! Now redo shifted by half a cell due to grid stagger.
+         ! Use shifted version for ex in X, ey in Y, ez in Z
+         ! And in Y&Z for bx, X&Z for by, X&Y for bz
+         cell_x2 = FLOOR(cell_x_r)
+         cell_frac_x = REAL(cell_x2, num) - cell_x_r + 0.5_num
+         cell_x2 = cell_x2 + 1
+
+         cell_y2 = FLOOR(cell_y_r)
+         cell_frac_y = REAL(cell_y2, num) - cell_y_r + 0.5_num
+         cell_y2 = cell_y2 + 1
+
+         cell_z2 = FLOOR(cell_z_r)
+         cell_frac_z = REAL(cell_z2, num) - cell_z_r + 0.5_num
+         cell_z2 = cell_z2 + 1
+
+         dcellx = 0
+         dcelly = 0
+         dcellz = 0
+         ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/hx_dcell.inc"
+         CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
+         CALL h_derivs(hdy,hy,dcelly,cell_frac_y,idy)
+         CALL h_derivs(hdz,hz,dcellz,cell_frac_z,idz)
          ! These are the electric and magnetic fields interpolated to the
          ! particle position. They have been checked and are correct.
          ! Actually checking this is messy.
 #include "bspline3/e_part.inc"
 #include "bspline3/b_part.inc"
-         ! NOTE: These weights require an additional multiplication factor!
-#include "bspline3/hx_dcell.inc"
+         CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+              & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
 
          !OK, so what we need is mostly the derivatives of the magnetic field, plus some vector algebra stuff to do cross products etc.
          ! Look at the finite difference stuff in bx_part, and figure out how to take a spatial derivative of it.
@@ -438,7 +499,7 @@ CONTAINS
          ! Probably want to do electrostatic somehow: couple DK particles to ES field only?
          ! Otherwise, need full current description. Curl of shape function for magnetisation current?
          CALL get_drifts(current%part_pos,bdir, drifts_ExB, &
-                    &  drifts_mu,drifts_vpll, bdotBmag)
+              &  drifts_mu,drifts_vpll, bdotBmag)
 
          dRdt = bdir * part_u &
               & + drifts_ExB + drifts_mu*part_mu + drifts_vpll*part_u
@@ -461,7 +522,9 @@ CONTAINS
 
     END SUBROUTINE push_particles_dk
 
-    SUBROUTINE get_drifts(pos,ExB,bdir,drifts_mu,drifts_vpll,bdotgradBmag)    
+
+
+    SUBROUTINE get_drifts(pos,ExB,bdir,drifts_mu,drifts_vpll,bdir_dotgradBmag)    
       !    & cell_frac_x, cell_frac_y, cell_frac_z,gx,gy,gz,hx,hy,hz,   &
       !    & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
       !     REAL, INTENT(IN) :: cell_frac_x, cell_frac_y, cell_frac_z
@@ -469,38 +532,247 @@ CONTAINS
       !     REAL, DIMENSION(DIMX), INTENT(INOUT) :: gx,gy,gz,hx,hy,hz
       REAL(num), DIMENSION(3), INTENT(INOUT) :: pos, ExB
       REAL(num), DIMENSION(3), INTENT(OUT)   :: & 
-                          & drifts_mu,drifts_vpll
-      REAL(num), INTENT(OUT)   :: bdotgradBmag 
- 
-      REAL(num), DIMENSION(3) :: Bdir
-      REAL(num) :: Bsq,Bnorm
+           & drifts_mu,drifts_vpll
+      REAL(num), INTENT(OUT)   :: bdir_dotgradBmag 
 
-      dcellx = 0
-      dcelly = 0
-      dcellz = 0
-      ! NOTE: These weights require an additional multiplication factor!
-#include "bspline3/hx_dcell.inc"
+      REAL(num), DIMENSION(3) :: Evec,Bvec,Bdir,BdotgradB,gradBmag
+      REAL(num) :: Bsq,Bnorm,bdir_dotgradB
 
-      ! These are the electric and magnetic fields interpolated to the
-      ! particle position. They have been checked and are correct.
-      ! Actually checking this is messy.
-#include "bspline3/e_part.inc"
-#include "bspline3/b_part.inc"
+      ! Trying to avoid having to unroll everything at the moment.
+      Evec(1) = ex_part
+      Evec(2) = ey_part
+      Evec(3) = ez_part
+      Bvec(1) = Bx_part
+      Bvec(2) = By_part
+      Bvec(3) = Bz_part
 
-      Bsq = (bx_part*bx_part+by_part*by_part+bz_part*bz_part)
+      Bsq = dot_product(Bvec,Bvec)
       Bnorm = sqrt(Bsq)
+      bdir = Bvec/Bnorm
 
-      bdir(1) = bx_part/Bnorm
-      bdir(2) = by_part/Bnorm
-      bdir(3) = bz_part/Bnorm
+      gradBmag = (Btens(:,1)*bx_part + Btens(:,2)*bx_part + Btens(:,3)*bz_part)/Bnorm 
+      BdotgradB = bx_part*Btens(1,:) + bx_part*Btens(1,:) + bz_part*Btens(1,:)
+      bdir_dotgradBmag = dot_product(bdir,gradBmag)
 
-      ExB(1) = (ey_part*bz_part - ez_part*by_part)/Bsq 
-      ExB(2) = (ez_part*bx_part - ex_part*bz_part)/Bsq 
-      ExB(3) = (ex_part*by_part - ey_part*bx_part)/Bsq 
+      ExB = cross(Evec,Bvec)/Bsq
 
-      bdotgradBmag = 0.0
+      drifts_vpll = cross(BdotgradB,Bvec)/(Bnorm*Bsq)
+      drifts_mu   = cross(gradBmag,Bvec)/Bsq
+
     END SUBROUTINE get_drifts
 
+
   END SUBROUTINE push_particles
+
+  FUNCTION cross(a,b)
+    REAL(num), DIMENSION(3) :: cross
+    REAL(num), DIMENSION(3) :: a,b
+    cross(1) = a(2)*b(3)-a(3)*b(2)
+    cross(2) = a(3)*b(1)-a(3)*b(1)
+    cross(3) = a(1)*b(2)-a(2)*b(1)
+  END FUNCTION cross
+
+  !Find derivative of weight array with respect to position.
+  !This is stored in array(:,2)
+  !array(:,1) is the weight array itself.
+  SUBROUTINE h_derivs(array,array1,offset,cell_frac,id_cell)
+    REAL(num), DIMENSION(:,:), INTENT(INOUT) :: array
+    REAL(num), DIMENSION(:), INTENT(INOUT) :: array1
+    REAL(num), INTENT(IN) :: cell_frac,id_cell
+    INTEGER, INTENT(IN)   :: offset
+    REAL(num) :: cf2
+
+    cf2 = cell_frac*cell_frac
+    array(offset-2,2) = -4.0_num*(0.5_num + cell_frac)**3
+    array(offset-1,2) =  11.0_num &
+         + 4.0_num * cell_frac * (3.0_num - 3.0_num*cell_frac - 4.0_num*cf2) 
+    array(offset  ,2) =     6.0_num * (4.0_num*cell_frac) * (cf2 - 1.25_num) 
+    array(offset+1,2) = -11.0_num &
+         + 4.0_num * cell_frac * (3.0_num + 3.0_num*cell_frac - 4.0_num*cf2) 
+    array(offset+2,2) = -4.0_num*(0.5_num - cell_frac)**3
+
+    array(:,2) = array(:,2)*id_cell
+    array(:,1) = array1
+  END SUBROUTINE h_derivs
+
+  !Rewrite finite-difference evaluation include file as a function for
+  !testing purposes. 
+  SUBROUTINE hfun(array,offset,cell_frac)
+    REAL(num), DIMENSION(:), INTENT(INOUT) :: array
+    REAL(num), INTENT(IN) :: cell_frac
+    INTEGER, INTENT(IN)   :: offset
+    REAL(num) :: cf2
+
+    cf2 = cell_frac**2
+    array(offset-2) = (0.5_num + cell_frac)**4
+    array(offset-1) = 4.75_num + 11.0_num * cell_frac &
+         + 4.0_num * cf2 * (1.5_num - cell_frac - cf2)
+    array(offset+0) = 14.375_num + 6.0_num * cf2 * (cf2 - 2.5_num)
+    array(offset+1) = 4.75_num - 11.0_num * cell_frac &
+         + 4.0_num * cf2 * (1.5_num + cell_frac - cf2)
+    array(offset+2) = (0.5_num - cell_frac)**4
+  END SUBROUTINE hfun
+
+
+  !Need this for general grad B drift, calculating B*, etc.
+  !For the moment, aiming for code that is easy to modify/test rather
+  !than max performance.
+  SUBROUTINE calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+       & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
+    INTEGER :: cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2
+    REAL(num), DIMENSION(3,3) :: Btens
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
+    REAL(num) :: idx,idy,idz
+
+    INTEGER :: cello_x,cello_y,cello_z
+    INTEGER :: xp,yp,zp !Keep track of which derivative is being taken.
+    INTEGER :: ii
+
+    ! Calculate grad-B tensor
+    do cello_x = -2,2
+       do cello_y = -2,2
+          do cello_z = -2,2
+             do ii=1,3
+                xp=1+kronecker_delta(ii,1)
+                yp=1+kronecker_delta(ii,2)
+                zp=1+kronecker_delta(ii,3)
+                Btens(ii,1) = Btens(ii,1) + &
+                     &  hdx(cello_x,xp)*gdy(cello_y,yp)*gdz(cello_z,zp)  &
+                     & *bx(cell_x2+cello_x,cell_y1+cello_y,cell_z1+cello_z)
+                Btens(ii,2) = Btens(ii,2) + &
+                     &  hdx(cello_x,xp)*hdy(cello_y,yp)*gdz(cello_z,zp)  &
+                     & *bx(cell_x1+cello_x,cell_y2+cello_y,cell_z1+cello_z)
+                Btens(ii,3) = Btens(ii,3) + &
+                     &  gdx(cello_x,xp)*gdy(cello_y,yp)*hdz(cello_z,zp)  &
+                     & *bx(cell_x1+cello_x,cell_y1+cello_y,cell_z2+cello_z)
+             end do
+          end do
+       end do
+    end do
+    Btens(1,:) = Btens(1,:)*idx
+    Btens(2,:) = Btens(2,:)*idy
+    Btens(3,:) = Btens(3,:)*idz
+
+  END SUBROUTINE calc_Btens
+
+  INTEGER FUNCTION kronecker_delta(a,b)
+    INTEGER, INTENT(IN) :: a,b
+    IF (a==b) THEN
+       kronecker_delta=1
+    ELSE
+       kronecker_delta=0
+    END IF
+  END FUNCTION KRONECKER_DELTA
+
+  ! Testing harness for fields
+  SUBROUTINE get_fields_at_point(pos,bvec,evec,btens)
+    REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
+    REAL(num), DIMENSION(3,3), INTENT(INOUT) :: btens
+
+
+    ! Fields at particle location
+    REAL(num) :: ex_part, ey_part, ez_part, bx_part, by_part, bz_part
+    REAL(num) :: cell_x_r, cell_y_r, cell_z_r
+    INTEGER :: cell_x1, cell_x2, cell_x3
+    INTEGER :: cell_y1, cell_y2, cell_y3
+    INTEGER :: cell_z1, cell_z2, cell_z3
+    INTEGER :: dcellx, dcelly, dcellz
+    REAL(num) :: idx, idy, idz
+    REAL(num) :: cf2
+    REAL(num) :: part_x, part_y, part_z
+    ! The fraction of a cell between the particle position and the cell boundary
+    REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
+    ! Weighting factors as Eqn 4.77 page 25 of manual
+    ! Eqn 4.77 would be written as
+    ! F(j-1) * gmx + F(j) * g0x + F(j+1) * gpx
+    ! Defined at the particle position
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    ! Spatial derivative of same
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
+    ! Defined at the particle position - 0.5 grid cell in each direction
+    ! This is to deal with the grid stagger
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
+    ! Spatial derivative of same
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
+
+    idx = 1.0_num / dx
+    idy = 1.0_num / dy
+    idz = 1.0_num / dz
+
+    part_x = pos(1)
+    part_y = pos(2)
+    part_z = pos(3)
+
+    ! Grid cell position as a fraction.
+    cell_x_r = part_x * idx
+    cell_y_r = part_y * idy
+    cell_z_r = part_z * idz
+    ! Round cell position to nearest cell
+    cell_x1 = FLOOR(cell_x_r + 0.5_num)
+    ! Calculate fraction of cell between nearest cell boundary and particle
+    cell_frac_x = REAL(cell_x1, num) - cell_x_r
+    cell_x1 = cell_x1 + 1
+
+    cell_y1 = FLOOR(cell_y_r + 0.5_num)
+    cell_frac_y = REAL(cell_y1, num) - cell_y_r
+    cell_y1 = cell_y1 + 1
+
+    cell_z1 = FLOOR(cell_z_r + 0.5_num)
+    cell_frac_z = REAL(cell_z1, num) - cell_z_r
+    cell_z1 = cell_z1 + 1
+
+    dcellx = cell_x3 - cell_x1
+    dcelly = cell_y3 - cell_y1
+    dcellz = cell_z3 - cell_z1
+
+    ! Particle weight factors as described in the manual, page25
+    ! These weight grid properties onto particles
+    ! Also used to weight particle properties onto grid, used later
+    ! to calculate J
+    ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/gx.inc"
+    CALL h_derivs(gdx,gx,0,cell_frac_x,idx)
+    CALL h_derivs(gdy,gy,0,cell_frac_y,idy)
+    CALL h_derivs(gdz,gz,0,cell_frac_z,idz)
+
+    ! Now redo shifted by half a cell due to grid stagger.
+    ! Use shifted version for ex in X, ey in Y, ez in Z
+    ! And in Y&Z for bx, X&Z for by, X&Y for bz
+    cell_x2 = FLOOR(cell_x_r)
+    cell_frac_x = REAL(cell_x2, num) - cell_x_r + 0.5_num
+    cell_x2 = cell_x2 + 1
+
+    cell_y2 = FLOOR(cell_y_r)
+    cell_frac_y = REAL(cell_y2, num) - cell_y_r + 0.5_num
+    cell_y2 = cell_y2 + 1
+
+    cell_z2 = FLOOR(cell_z_r)
+    cell_frac_z = REAL(cell_z2, num) - cell_z_r + 0.5_num
+    cell_z2 = cell_z2 + 1
+
+    dcellx = 0
+    dcelly = 0
+    dcellz = 0
+    ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/hx_dcell.inc"
+    CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
+    CALL h_derivs(hdy,hy,dcelly,cell_frac_y,idy)
+    CALL h_derivs(hdz,hz,dcellz,cell_frac_z,idz)
+    ! These are the electric and magnetic fields interpolated to the
+    ! particle position. They have been checked and are correct.
+    ! Actually checking this is messy.
+#include "bspline3/e_part.inc"
+#include "bspline3/b_part.inc"
+    CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+         & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)  
+    Evec(1) = ex_part
+    Evec(2) = ey_part
+    Evec(3) = ez_part
+    Bvec(1) = Bx_part
+    Bvec(2) = By_part
+    Bvec(3) = Bz_part
+
+  END SUBROUTINE get_fields_at_point
 
 END MODULE particles

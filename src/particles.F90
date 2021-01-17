@@ -643,7 +643,7 @@ CONTAINS
                 yp=1+kronecker_delta(ii,2)
                 zp=1+kronecker_delta(ii,3)
                 Btens(ii,1) = Btens(ii,1) + &
-                     &  hdx(cello_x,xp)*hdy(cello_y,yp)*gdz(cello_z,zp)  &
+                     &  gdx(cello_x,xp)*hdy(cello_y,yp)*hdz(cello_z,zp)  &
                      & *bx(cell_x1+cello_x,cell_y2+cello_y,cell_z2+cello_z)
                 Btens(ii,2) = Btens(ii,2) + &
                      &  hdx(cello_x,xp)*gdy(cello_y,yp)*hdz(cello_z,zp)  &
@@ -810,7 +810,7 @@ CONTAINS
     Do i=1,nx
        pos(1) =  x_grid_min_local + i*dx*0.2
        CALL  get_fields_at_point(pos,bvec,evec,btens)
-       WRITE (24,*) pos(1),bvec(3),btens(1,3)
+       WRITE (24,*) pos(1),bvec(1),bvec(2),bvec(3),btens(1,1),btens(1,2),btens(1,3)
     END DO
    !CALL MPI_EXIT()
     STOP  

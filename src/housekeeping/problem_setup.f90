@@ -99,7 +99,9 @@ CONTAINS
           do j=1-ng,ny+ng
              do k=1-ng,nz+ng
                 xp = x_grid_min_local+i*dx
-                bz(i,j,k) = cos(xp)
+                bx(i,j,k) = cos(xp)
+                by(i,j,k) = cos(xp+1.0)
+                bz(i,j,k) = cos(xp+2.5)
              end do
           end do
        end do

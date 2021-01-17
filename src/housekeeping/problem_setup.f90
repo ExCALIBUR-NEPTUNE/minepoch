@@ -80,6 +80,8 @@ CONTAINS
 
 
   SUBROUTINE fields_initialise
+    INTEGER :: i,j,k
+    REAL(num) :: xp
 
     ex = 0.0_num
     ey = 0.0_num
@@ -87,6 +89,21 @@ CONTAINS
     bx = 0.0_num
     by = 0.0_num
     bz = 0.0_num
+    IF (.true.) THEN
+       fixed_fields = .TRUE.
+       !bz = 1.0_num
+       !ex = -1.0_num
+       !bx = 10.0_num
+       !by = -3_num
+       do i=1-ng,nx+ng
+          do j=1-ng,ny+ng
+             do k=1-ng,nz+ng
+                xp = x_grid_min_local+i*dx
+                bz(i,j,k) = cos(xp)
+             end do
+          end do
+       end do
+    END IF
 
   END SUBROUTINE fields_initialise
 

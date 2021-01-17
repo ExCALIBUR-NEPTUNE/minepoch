@@ -536,7 +536,7 @@ CONTAINS
       REAL(num), INTENT(OUT)   :: bdir_dotgradBmag 
 
       REAL(num), DIMENSION(3) :: Evec,Bvec,Bdir,BdotgradB,gradBmag
-      REAL(num) :: Bsq,Bnorm,bdir_dotgradB
+      REAL(num) :: Bsq,Bnorm
 
       ! Trying to avoid having to unroll everything at the moment.
       Evec(1) = ex_part
@@ -575,15 +575,17 @@ CONTAINS
   !Find derivative of weight array with respect to position.
   !This is stored in array(:,2)
   !array(:,1) is the weight array itself.
+  !cell_frac is negative position in cell relative to centre?
   SUBROUTINE h_derivs(array,array1,offset,cell_frac,id_cell)
-    REAL(num), DIMENSION(:,:), INTENT(INOUT) :: array
-    REAL(num), DIMENSION(:), INTENT(INOUT) :: array1
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2), INTENT(INOUT) :: array
+    REAL(num), DIMENSION(sf_min-1:sf_max+1), INTENT(INOUT) :: array1
     REAL(num), INTENT(IN) :: cell_frac,id_cell
     INTEGER, INTENT(IN)   :: offset
     REAL(num) :: cf2
 
     cf2 = cell_frac*cell_frac
-    array(offset-2,2) = -4.0_num*(0.5_num + cell_frac)**3
+    array = 0.0_num
+    array(offset-2,2) =  4.0_num*(0.5_num + cell_frac)**3
     array(offset-1,2) =  11.0_num &
          + 4.0_num * cell_frac * (3.0_num - 3.0_num*cell_frac - 4.0_num*cf2) 
     array(offset  ,2) =     6.0_num * (4.0_num*cell_frac) * (cf2 - 1.25_num) 
@@ -591,14 +593,15 @@ CONTAINS
          + 4.0_num * cell_frac * (3.0_num + 3.0_num*cell_frac - 4.0_num*cf2) 
     array(offset+2,2) = -4.0_num*(0.5_num - cell_frac)**3
 
-    array(:,2) = array(:,2)*id_cell
+    !Because cell_frac is negatively proportional to position.
+    array(:,2) =-array(:,2)*id_cell
     array(:,1) = array1
   END SUBROUTINE h_derivs
 
   !Rewrite finite-difference evaluation include file as a function for
   !testing purposes. 
   SUBROUTINE hfun(array,offset,cell_frac)
-    REAL(num), DIMENSION(:), INTENT(INOUT) :: array
+    REAL(num), DIMENSION(sf_min-1:sf_max+1), INTENT(INOUT) :: array
     REAL(num), INTENT(IN) :: cell_frac
     INTEGER, INTENT(IN)   :: offset
     REAL(num) :: cf2
@@ -624,11 +627,13 @@ CONTAINS
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
     REAL(num) :: idx,idy,idz
+    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     INTEGER :: cello_x,cello_y,cello_z
     INTEGER :: xp,yp,zp !Keep track of which derivative is being taken.
     INTEGER :: ii
 
+    Btens = 0.0_num
     ! Calculate grad-B tensor
     do cello_x = -2,2
        do cello_y = -2,2
@@ -638,22 +643,19 @@ CONTAINS
                 yp=1+kronecker_delta(ii,2)
                 zp=1+kronecker_delta(ii,3)
                 Btens(ii,1) = Btens(ii,1) + &
-                     &  hdx(cello_x,xp)*gdy(cello_y,yp)*gdz(cello_z,zp)  &
-                     & *bx(cell_x2+cello_x,cell_y1+cello_y,cell_z1+cello_z)
-                Btens(ii,2) = Btens(ii,2) + &
                      &  hdx(cello_x,xp)*hdy(cello_y,yp)*gdz(cello_z,zp)  &
-                     & *bx(cell_x1+cello_x,cell_y2+cello_y,cell_z1+cello_z)
+                     & *bx(cell_x1+cello_x,cell_y2+cello_y,cell_z2+cello_z)
+                Btens(ii,2) = Btens(ii,2) + &
+                     &  hdx(cello_x,xp)*gdy(cello_y,yp)*hdz(cello_z,zp)  &
+                     & *by(cell_x2+cello_x,cell_y1+cello_y,cell_z2+cello_z)
                 Btens(ii,3) = Btens(ii,3) + &
-                     &  gdx(cello_x,xp)*gdy(cello_y,yp)*hdz(cello_z,zp)  &
-                     & *bx(cell_x1+cello_x,cell_y1+cello_y,cell_z2+cello_z)
+                     &  hdx(cello_x,xp)*hdy(cello_y,yp)*gdz(cello_z,zp)  &
+                     & *bz(cell_x2+cello_x,cell_y2+cello_y,cell_z1+cello_z)
              end do
           end do
        end do
     end do
-    Btens(1,:) = Btens(1,:)*idx
-    Btens(2,:) = Btens(2,:)*idy
-    Btens(3,:) = Btens(3,:)*idz
-
+    Btens = Btens*fac
   END SUBROUTINE calc_Btens
 
   INTEGER FUNCTION kronecker_delta(a,b)
@@ -669,14 +671,14 @@ CONTAINS
   SUBROUTINE get_fields_at_point(pos,bvec,evec,btens)
     REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
     REAL(num), DIMENSION(3,3), INTENT(INOUT) :: btens
-
+    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     ! Fields at particle location
     REAL(num) :: ex_part, ey_part, ez_part, bx_part, by_part, bz_part
     REAL(num) :: cell_x_r, cell_y_r, cell_z_r
-    INTEGER :: cell_x1, cell_x2, cell_x3
-    INTEGER :: cell_y1, cell_y2, cell_y3
-    INTEGER :: cell_z1, cell_z2, cell_z3
+    INTEGER :: cell_x1, cell_x2
+    INTEGER :: cell_y1, cell_y2
+    INTEGER :: cell_z1, cell_z2
     INTEGER :: dcellx, dcelly, dcellz
     REAL(num) :: idx, idy, idz
     REAL(num) :: cf2
@@ -700,9 +702,9 @@ CONTAINS
     idy = 1.0_num / dy
     idz = 1.0_num / dz
 
-    part_x = pos(1)
-    part_y = pos(2)
-    part_z = pos(3)
+    part_x = pos(1) - x_grid_min_local
+    part_y = pos(2) - y_grid_min_local
+    part_z = pos(3) - z_grid_min_local
 
     ! Grid cell position as a fraction.
     cell_x_r = part_x * idx
@@ -721,10 +723,6 @@ CONTAINS
     cell_z1 = FLOOR(cell_z_r + 0.5_num)
     cell_frac_z = REAL(cell_z1, num) - cell_z_r
     cell_z1 = cell_z1 + 1
-
-    dcellx = cell_x3 - cell_x1
-    dcelly = cell_y3 - cell_y1
-    dcellz = cell_z3 - cell_z1
 
     ! Particle weight factors as described in the manual, page25
     ! These weight grid properties onto particles
@@ -764,15 +762,58 @@ CONTAINS
     ! Actually checking this is messy.
 #include "bspline3/e_part.inc"
 #include "bspline3/b_part.inc"
-    CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
-         & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)  
     Evec(1) = ex_part
     Evec(2) = ey_part
     Evec(3) = ez_part
     Bvec(1) = Bx_part
     Bvec(2) = By_part
     Bvec(3) = Bz_part
+    ! This is the shape function partition-of-unity factor.
+    Evec  = Evec*fac
+    Bvec  = Bvec*fac
+
+    CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+         & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)  
 
   END SUBROUTINE get_fields_at_point
 
+  SUBROUTINE postsetup_testing
+    REAL(num), DIMENSION(3)   :: pos,bvec,evec
+    REAL(num), DIMENSION(3,3) :: btens
+    INTEGER :: i,j !,k
+!    do i=1-ng,nx+ng
+!    do j=1-ng,ny+ng
+!    do k=1-ng,nz+ng
+!       WRITE(*,*) i,j,k,ex(i,j,k),bx(i,j,k)
+!    end do
+! end do
+!end do
+!    STOP
+
+    WRITE (*,*) 'xminmax',x_grid_min_local, x_grid_max_local
+    pos(1) =  x_grid_min_local
+    pos(2) =  y_grid_min_local
+    pos(3) =  z_grid_min_local
+
+    CALL  get_fields_at_point(pos,bvec,evec,btens)
+    WRITE (*,*) 'pos',pos(1),pos(2),pos(3)
+    WRITE (*,*) 'bvec',bvec(1),bvec(2),bvec(3)
+    WRITE (*,*) 'evec',evec(1),evec(2),evec(3)
+    DO i=1,3
+       DO j=1,3
+          WRITE (*,*) btens(i,j)
+       END DO
+    END DO
+  
+    OPEN(unit=24,file='tfields')
+
+    Do i=1,nx
+       pos(1) =  x_grid_min_local + i*dx*0.2
+       CALL  get_fields_at_point(pos,bvec,evec,btens)
+       WRITE (24,*) pos(1),bvec(3),btens(1,3)
+    END DO
+   !CALL MPI_EXIT()
+    STOP  
+  END SUBROUTINE postsetup_testing
+  
 END MODULE particles

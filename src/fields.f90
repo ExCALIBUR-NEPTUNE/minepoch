@@ -8,6 +8,7 @@ MODULE fields
   REAL(num) :: hdt, fac
   REAL(num) :: hdtx, hdty, hdtz
   REAL(num) :: cnx, cny, cnz
+  LOGICAL :: fixed_fields
 
 CONTAINS
 
@@ -261,6 +262,7 @@ CONTAINS
 
 
   SUBROUTINE update_eb_fields_half
+    IF(fixed_fields) RETURN
 
     hdt  = 0.5_num * dt
     hdtx = hdt / dx
@@ -293,6 +295,7 @@ CONTAINS
 
 
   SUBROUTINE update_eb_fields_final
+    IF(fixed_fields) RETURN
 
     hdt  = 0.5_num * dt
     hdtx = hdt / dx

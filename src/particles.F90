@@ -394,6 +394,7 @@ CONTAINS
       REAL(num), DIMENSION(3) :: dRdt
       REAL(num), DIMENSION(3) :: bdir, drifts_mu, drifts_vpll
       REAL(num), DIMENSION(3) :: drifts_ExB
+      REAL(num), DIMENSION(3) :: Evec, Bvec
       REAL(num) :: part_mu, part_u, bdotBmag
       current => species%attached_list%head
 
@@ -425,10 +426,14 @@ CONTAINS
          part_y  = current%part_pos(2) - y_grid_min_local
          part_z  = current%part_pos(3) - z_grid_min_local
 
-         part_u   = current%part_p(1) * ipart_mc
-         part_mu  = current%part_p(2) * ipart_mc
-
-
+         ! Do nonrelativistic drift-kinetics for the moment.
+         part_u   = current%part_p(1)
+         part_mu  = current%part_p(2)
+ 
+         IF (current%part_p(3)<0.5_num) THEN
+            write (18,*) ipart,part_x,part_y,part_z,part_u,part_mu,current%part_p(3)
+         END IF
+         !stop
 !!!!!!!!!!!!!!!! Field calculation
          ! Grid cell position as a fraction.
          cell_x_r = part_x * idx
@@ -493,82 +498,76 @@ CONTAINS
          CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
               & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
 
-         !OK, so what we need is mostly the derivatives of the magnetic field, plus some vector algebra stuff to do cross products etc.
-         ! Look at the finite difference stuff in bx_part, and figure out how to take a spatial derivative of it.
-         ! Thoughts: enable fixed E, B fields would help a lot to get particle tracing right. Ignore B_perp would also make things easier. Can we do Esirkepov based on guiding centre? (dont see why not)
-         ! Probably want to do electrostatic somehow: couple DK particles to ES field only?
-         ! Otherwise, need full current description. Curl of shape function for magnetisation current?
-         CALL get_drifts(current%part_pos,bdir, drifts_ExB, &
+         Evec(1) = ex_part
+         Evec(2) = ey_part
+         Evec(3) = ez_part
+         Bvec(1) = Bx_part
+         Bvec(2) = By_part
+         Bvec(3) = Bz_part
+         CALL get_drifts(current%part_pos,Evec,Bvec,Btens,drifts_ExB,bdir, &
               &  drifts_mu,drifts_vpll, bdotBmag)
 
+         ! Ignore B_perp would also make things easier. Can we do Esirkepov based on guiding centre? (dont see why not)
+         ! Probably want to do electrostatic somehow: couple DK particles to ES field only?
+         ! Otherwise, need full current description. Curl of shape function for magnetisation current?
+         IF (current%part_p(3)<0.5_num) THEN
+            write (19,*) bdir(1),bdir(2),bdir(3),(part_mu * bdotBmag / current%mass)
+         END IF
          dRdt = bdir * part_u &
               & + drifts_ExB + drifts_mu*part_mu + drifts_vpll*part_u
-
+         dRdt = bdir * part_u
          ! Move particles to half timestep position to first order
          part_x = part_x + dRdt(1) * dt
          part_y = part_y + dRdt(2) * dt
          part_z = part_z + dRdt(3) * dt
 
-         part_u = part_u + part_mu * bdotBmag * dt
+         part_u = part_u - (part_mu * bdotBmag / current%mass) * dt
 
          ! particle has now finished move to end of timestep, so copy back
          ! into particle array
          current%part_pos = (/ part_x + x_grid_min_local, &
               part_y + y_grid_min_local, part_z + z_grid_min_local /)
-         current%part_p   = (/ part_u, part_mu, 0.0d0 /)
+         current%part_p(1:2)   = (/ part_u, part_mu /)
 
          current => next
       ENDDO
 
     END SUBROUTINE push_particles_dk
 
-
-
-    SUBROUTINE get_drifts(pos,ExB,bdir,drifts_mu,drifts_vpll,bdir_dotgradBmag)    
-      !    & cell_frac_x, cell_frac_y, cell_frac_z,gx,gy,gz,hx,hy,hz,   &
-      !    & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
-      !     REAL, INTENT(IN) :: cell_frac_x, cell_frac_y, cell_frac_z
-      !     REAL, INTENT(IN) :: cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2
-      !     REAL, DIMENSION(DIMX), INTENT(INOUT) :: gx,gy,gz,hx,hy,hz
-      REAL(num), DIMENSION(3), INTENT(INOUT) :: pos, ExB
-      REAL(num), DIMENSION(3), INTENT(OUT)   :: & 
-           & drifts_mu,drifts_vpll
-      REAL(num), INTENT(OUT)   :: bdir_dotgradBmag 
-
-      REAL(num), DIMENSION(3) :: Evec,Bvec,Bdir,BdotgradB,gradBmag
-      REAL(num) :: Bsq,Bnorm
-
-      ! Trying to avoid having to unroll everything at the moment.
-      Evec(1) = ex_part
-      Evec(2) = ey_part
-      Evec(3) = ez_part
-      Bvec(1) = Bx_part
-      Bvec(2) = By_part
-      Bvec(3) = Bz_part
-
-      Bsq = dot_product(Bvec,Bvec)
-      Bnorm = sqrt(Bsq)
-      bdir = Bvec/Bnorm
-
-      gradBmag = (Btens(:,1)*bx_part + Btens(:,2)*bx_part + Btens(:,3)*bz_part)/Bnorm 
-      BdotgradB = bx_part*Btens(1,:) + bx_part*Btens(1,:) + bz_part*Btens(1,:)
-      bdir_dotgradBmag = dot_product(bdir,gradBmag)
-
-      ExB = cross(Evec,Bvec)/Bsq
-
-      drifts_vpll = cross(BdotgradB,Bvec)/(Bnorm*Bsq)
-      drifts_mu   = cross(gradBmag,Bvec)/Bsq
-
-    END SUBROUTINE get_drifts
-
-
   END SUBROUTINE push_particles
+
+  SUBROUTINE get_drifts(pos,Evec,Bvec,Btens,ExB,bdir,drifts_mu,drifts_vpll,bdir_dotgradBmag)    
+    REAL(num), DIMENSION(3), INTENT(INOUT) :: pos, ExB, Evec, Bvec
+    REAL(num), DIMENSION(3,3), INTENT(INOUT) :: Btens
+    REAL(num), DIMENSION(3), INTENT(OUT)   :: & 
+         & drifts_mu,drifts_vpll
+    REAL(num), INTENT(OUT)   :: bdir_dotgradBmag 
+
+    REAL(num), DIMENSION(3) :: Bdir,BdotgradB,gradBmag
+    REAL(num) :: Bsq,Bnorm
+
+    Bsq = dot_product(Bvec,Bvec)
+    Bnorm = sqrt(Bsq)
+    bdir = Bvec/Bnorm
+
+    !Maybe can do these with matmul?
+    gradBmag = (Btens(:,1)*Bvec(1) + Btens(:,2)*Bvec(2) + Btens(:,3)*Bvec(3))/Bnorm 
+    BdotgradB = Bvec(1)*Btens(1,:) + Bvec(2)*Btens(2,:) + Bvec(3)*Btens(3,:)
+
+    bdir_dotgradBmag = dot_product(bdir,gradBmag)
+
+    ExB = cross(Evec,Bvec)/Bsq
+
+    drifts_vpll = cross(BdotgradB,Bvec)/(Bnorm*Bsq)
+    drifts_mu   = cross(gradBmag,Bvec)/Bsq
+  END SUBROUTINE get_drifts
+
 
   FUNCTION cross(a,b)
     REAL(num), DIMENSION(3) :: cross
     REAL(num), DIMENSION(3) :: a,b
     cross(1) = a(2)*b(3)-a(3)*b(2)
-    cross(2) = a(3)*b(1)-a(3)*b(1)
+    cross(2) = a(3)*b(1)-a(1)*b(3)
     cross(3) = a(1)*b(2)-a(2)*b(1)
   END FUNCTION cross
 
@@ -780,15 +779,18 @@ CONTAINS
   SUBROUTINE postsetup_testing
     REAL(num), DIMENSION(3)   :: pos,bvec,evec
     REAL(num), DIMENSION(3,3) :: btens
+    REAL(num), DIMENSION(3)   ::  drifts_mu,drifts_vpll,ExB,bdir
+    REAL(num)                 :: bdir_dotgradBmag 
+
     INTEGER :: i,j !,k
-!    do i=1-ng,nx+ng
-!    do j=1-ng,ny+ng
-!    do k=1-ng,nz+ng
-!       WRITE(*,*) i,j,k,ex(i,j,k),bx(i,j,k)
-!    end do
-! end do
-!end do
-!    STOP
+    !    do i=1-ng,nx+ng
+    !    do j=1-ng,ny+ng
+    !    do k=1-ng,nz+ng
+    !       WRITE(*,*) i,j,k,ex(i,j,k),bx(i,j,k)
+    !    end do
+    ! end do
+    !end do
+    !    STOP
 
     WRITE (*,*) 'xminmax',x_grid_min_local, x_grid_max_local
     pos(1) =  x_grid_min_local
@@ -804,16 +806,20 @@ CONTAINS
           WRITE (*,*) btens(i,j)
        END DO
     END DO
-  
+
     OPEN(unit=24,file='tfields')
+    OPEN(unit=25,file='tdrifts')
 
     Do i=1,nx
        pos(1) =  x_grid_min_local + i*dx*0.2
        CALL  get_fields_at_point(pos,bvec,evec,btens)
-       WRITE (24,*) pos(1),bvec(1),bvec(2),bvec(3),btens(1,1),btens(1,2),btens(1,3)
+       WRITE (24,*) pos(1),bvec(1),bvec(2),bvec(3),evec(1),evec(2),evec(3)
+       CALL  get_drifts(pos,Evec,Bvec,Btens,ExB,bdir,drifts_mu,drifts_vpll,bdir_dotgradBmag)    
+       !WRITE (24,*) pos(1),bvec(1),bvec(2),bvec(3),btens(1,1),btens(1,2),btens(1,3)
+       WRITE (25,*) pos(1),ExB(1),ExB(2),ExB(3),drifts_mu(1),drifts_mu(2),drifts_mu(3)
     END DO
-   !CALL MPI_EXIT()
+    !CALL MPI_EXIT()
     STOP  
   END SUBROUTINE postsetup_testing
-  
+
 END MODULE particles

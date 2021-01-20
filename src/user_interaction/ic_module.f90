@@ -22,7 +22,8 @@ CONTAINS
 
     INTEGER, INTENT(IN) :: deck_state
 
-    CALL two_stream_setup(deck_state)
+    !CALL two_stream_setup(deck_state)
+    CALL dk_setup(deck_state)
 
   END SUBROUTINE custom_problem_setup
 
@@ -129,6 +130,92 @@ CONTAINS
     ENDIF
 
   END SUBROUTINE two_stream_setup
+
+
+
+
+
+
+
+
+
+
+
+  SUBROUTINE dk_setup(deck_state)
+
+    INTEGER, INTENT(IN) :: deck_state
+    REAL(num), PARAMETER :: v_drift = 0.2_num * c
+    REAL(num), PARAMETER :: v_therm = 0.3_num * c ! Since nonrelativistic anyway.
+    REAL(num), PARAMETER :: v_pert = 0.1_num * v_therm
+    ! Density indirectly sets timestep, take to be low (not self-consistent anyway).
+    REAL(num), PARAMETER :: n0 = 8e8             
+    INTEGER, PARAMETER :: ppc = 1
+    REAL(num) :: gamma_drift, temp_x, omega
+    TYPE(particle_species), POINTER :: current_species
+
+    ! Plasma frequency
+    omega = SQRT(n0 * q0 * q0 / epsilon0 / m0)
+
+    ! Control
+
+    nx_global = 16
+    ny_global = 4
+    nz_global = 4
+    x_min = 0.0_num
+    x_max = 2.0_num * pi
+    y_min = x_min
+    ! Could do (x_max * ny_global) / nx_global, but be wary of compilers
+    ! which don't obey precedence implied by parentheses by default
+    ! (e.g. Intel)
+    y_max = x_max * REAL(ny_global, num) / REAL(nx_global, num)
+    z_min = x_min
+    z_max = x_max * REAL(nz_global, num) / REAL(nx_global, num)
+    t_end = 10*x_max/v_therm ! For drift kinetics, transit frequensy is a sensible timescale
+    stdout_frequency = 10
+
+    ! Calculate gamma_drift
+    ! Strictly should be function of x, but vpert << vdrift
+    gamma_drift = 1.0_num / SQRT(1.0_num - (v_drift / c)**2)
+
+    ! Calculate (1 DoF) temperature
+    temp_x = v_therm**2 * m0 / kb
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    ! Species
+
+    ! MANDATORY
+    NULLIFY(current_species)
+    CALL setup_species(current_species, 'electrons_dk')
+
+    ! mass -- MANDATORY
+    current_species%mass = 1.0_num * m0
+
+    ! charge -- MANDATORY
+    current_species%charge = -1.0_num * q0
+
+    ! npart_per_cell
+    current_species%npart_per_cell = ppc
+    current_species%is_driftkinetic = .true.
+
+    IF (deck_state /= c_ds_first) THEN
+      ! density
+      current_species%density = n0
+ 
+      ! temp_x
+      current_species%temp(:,:,:,1) = temp_x
+    ENDIF
+
+ 
+
+  END SUBROUTINE dk_setup
+
+
+
+
+
+
+
+
 
 
 

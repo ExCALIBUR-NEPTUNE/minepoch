@@ -70,7 +70,7 @@ PROGRAM pic
   CALL after_control   ! setup.f90
 
   CALL problem_setup(c_ds_last)
-  CALL postsetup_testing
+  !CALL postsetup_testing
   CALL after_deck_last
 
   ! auto_load particles

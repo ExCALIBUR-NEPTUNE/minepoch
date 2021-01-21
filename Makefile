@@ -247,7 +247,7 @@ epoch3d.o: epoch3d.F90 balance.o diagnostics.o fields.o finish.o helper.o \
   pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
-helper.o: helper.F90 boundary.o partlist.o strings.o
+helper.o: helper.F90 boundary.o partlist.o strings.o particles.o
 ic_module.o: ic_module.f90 helper.o setup.o shared_data.o
 laser.o: laser.f90 custom_laser.o
 mpi_routines.o: mpi_routines.F90 helper.o

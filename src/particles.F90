@@ -52,14 +52,10 @@ CONTAINS
     ! F(j-1) * gmx + F(j) * g0x + F(j+1) * gpx
     ! Defined at the particle position
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
-    ! Spatial derivative of same
-    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
 
     ! Defined at the particle position - 0.5 grid cell in each direction
     ! This is to deal with the grid stagger
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
-    ! Spatial derivative of same
-    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
 
     ! Fields at particle location
     REAL(num) :: ex_part, ey_part, ez_part, bx_part, by_part, bz_part
@@ -391,11 +387,12 @@ CONTAINS
     END SUBROUTINE push_particles_lorentz
 
     SUBROUTINE push_particles_dk
-      REAL(num), DIMENSION(3) :: dRdt
+      REAL(num), DIMENSION(3) :: dRdt, pos_0, pos_h, dRdt_1
       REAL(num), DIMENSION(3) :: bdir, drifts_mu, drifts_vpll
       REAL(num), DIMENSION(3) :: drifts_ExB
       REAL(num), DIMENSION(3) :: Evec, Bvec
       REAL(num) :: part_mu, part_u, bdotBmag
+      REAL(num) :: part_u_0,part_u_h, dudt, dudt_1
       current => species%attached_list%head
 
       IF (.NOT. particles_uniformly_distributed) THEN
@@ -408,125 +405,48 @@ CONTAINS
       !DEC$ VECTOR ALWAYS
       DO ipart = 1, species%attached_list%count
          next => current%next
-         IF (particles_uniformly_distributed) THEN
-            part_weight = current%weight
-            fcx = idtyz * part_weight
-            fcy = idtxz * part_weight
-            fcz = idtxy * part_weight
-         ENDIF
 
          part_q   = current%charge
-         part_mc  = c * current%mass
-         ipart_mc = 1.0_num / part_mc
-         cmratio  = part_q * dtfac * ipart_mc
-         ccmratio = c * cmratio
-
-         ! Copy the particle properties out for speed
-         part_x  = current%part_pos(1) - x_grid_min_local
-         part_y  = current%part_pos(2) - y_grid_min_local
-         part_z  = current%part_pos(3) - z_grid_min_local
-
          ! Do nonrelativistic drift-kinetics for the moment.
          part_u   = current%part_p(1)
          part_mu  = current%part_p(2)
  
          IF (current%part_p(3)<0.5_num) THEN
-            write (18,*) ipart,part_x,part_y,part_z,part_u,part_mu,current%part_p(3)
+            write (18,*) ipart,current%part_pos(1),current%part_pos(2),current%part_pos(3),part_u,part_mu,current%part_p(3)
          END IF
          !stop
-!!!!!!!!!!!!!!!! Field calculation
-         ! Grid cell position as a fraction.
-         cell_x_r = part_x * idx
-         cell_y_r = part_y * idy
-         cell_z_r = part_z * idz
-         ! Round cell position to nearest cell
-         cell_x1 = FLOOR(cell_x_r + 0.5_num)
-         ! Calculate fraction of cell between nearest cell boundary and particle
-         cell_frac_x = REAL(cell_x1, num) - cell_x_r
-         cell_x1 = cell_x1 + 1
 
-         cell_y1 = FLOOR(cell_y_r + 0.5_num)
-         cell_frac_y = REAL(cell_y1, num) - cell_y_r
-         cell_y1 = cell_y1 + 1
-
-         cell_z1 = FLOOR(cell_z_r + 0.5_num)
-         cell_frac_z = REAL(cell_z1, num) - cell_z_r
-         cell_z1 = cell_z1 + 1
-
-         dcellx = cell_x3 - cell_x1
-         dcelly = cell_y3 - cell_y1
-         dcellz = cell_z3 - cell_z1
-
-         ! Particle weight factors as described in the manual, page25
-         ! These weight grid properties onto particles
-         ! Also used to weight particle properties onto grid, used later
-         ! to calculate J
-         ! NOTE: These weights require an additional multiplication factor!
-#include "bspline3/gx.inc"
-         CALL h_derivs(gdx,gx,0,cell_frac_x,idx)
-         CALL h_derivs(gdy,gy,0,cell_frac_y,idy)
-         CALL h_derivs(gdz,gz,0,cell_frac_z,idz)
-
-         ! Now redo shifted by half a cell due to grid stagger.
-         ! Use shifted version for ex in X, ey in Y, ez in Z
-         ! And in Y&Z for bx, X&Z for by, X&Y for bz
-         cell_x2 = FLOOR(cell_x_r)
-         cell_frac_x = REAL(cell_x2, num) - cell_x_r + 0.5_num
-         cell_x2 = cell_x2 + 1
-
-         cell_y2 = FLOOR(cell_y_r)
-         cell_frac_y = REAL(cell_y2, num) - cell_y_r + 0.5_num
-         cell_y2 = cell_y2 + 1
-
-         cell_z2 = FLOOR(cell_z_r)
-         cell_frac_z = REAL(cell_z2, num) - cell_z_r + 0.5_num
-         cell_z2 = cell_z2 + 1
-
-         dcellx = 0
-         dcelly = 0
-         dcellz = 0
-         ! NOTE: These weights require an additional multiplication factor!
-#include "bspline3/hx_dcell.inc"
-         CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
-         CALL h_derivs(hdy,hy,dcelly,cell_frac_y,idy)
-         CALL h_derivs(hdz,hz,dcellz,cell_frac_z,idz)
-         ! These are the electric and magnetic fields interpolated to the
-         ! particle position. They have been checked and are correct.
-         ! Actually checking this is messy.
-#include "bspline3/e_part.inc"
-#include "bspline3/b_part.inc"
-         CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
-              & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
-
-         Evec(1) = ex_part
-         Evec(2) = ey_part
-         Evec(3) = ez_part
-         Bvec(1) = Bx_part
-         Bvec(2) = By_part
-         Bvec(3) = Bz_part
+         CALL get_fields_at_point(current%part_pos,Bvec,Evec,Btens)
          CALL get_drifts(current%part_pos,Evec,Bvec,Btens,drifts_ExB,bdir, &
               &  drifts_mu,drifts_vpll, bdotBmag)
-
          ! Ignore B_perp would also make things easier. Can we do Esirkepov based on guiding centre? (dont see why not)
          ! Probably want to do electrostatic somehow: couple DK particles to ES field only?
          ! Otherwise, need full current description. Curl of shape function for magnetisation current?
-         IF (current%part_p(3)<0.5_num) THEN
-            write (19,*) bdir(1),bdir(2),bdir(3),(part_mu * bdotBmag / current%mass)
-         END IF
-         dRdt = bdir * part_u &
-              & + drifts_ExB + drifts_mu*part_mu + drifts_vpll*part_u
+         !IF (current%part_p(3)<0.5_num) THEN
+         !   write (19,*) bdir(1),bdir(2),bdir(3),(part_mu * bdotBmag / current%mass)
+         !END IF
+         !dRdt = bdir * part_u &
+         !     & + drifts_ExB + drifts_mu*part_mu + drifts_vpll*part_u
          dRdt = bdir * part_u
+         dudt = - (part_mu * bdotBmag / current%mass) 
          ! Move particles to half timestep position to first order
-         part_x = part_x + dRdt(1) * dt
-         part_y = part_y + dRdt(2) * dt
-         part_z = part_z + dRdt(3) * dt
+         pos_0 = current%part_pos + dRdt * dt
+         part_u_0 = part_u + dudt * dt
 
-         part_u = part_u - (part_mu * bdotBmag / current%mass) * dt
+         !Half step position.
+         pos_h = 0.5*(current%part_pos + pos_0)
+         part_u_h = 0.5*(part_u + part_u_0)
 
+         CALL get_fields_at_point(pos_h,Bvec,Evec,Btens)
+         CALL get_drifts(pos_h,Evec,Bvec,Btens,drifts_ExB,bdir, &
+              &  drifts_mu,drifts_vpll, bdotBmag)
+         dRdt_1 = bdir * part_u_h
+         dudt_1 = - (part_mu * bdotBmag / current%mass) 
+         
          ! particle has now finished move to end of timestep, so copy back
          ! into particle array
-         current%part_pos = (/ part_x + x_grid_min_local, &
-              part_y + y_grid_min_local, part_z + z_grid_min_local /)
+         part_u = part_u + dudt_1 * dt
+         current%part_pos = current%part_pos + dRdt_1 * dt 
          current%part_p(1:2)   = (/ part_u, part_mu /)
 
          current => next
@@ -666,7 +586,7 @@ CONTAINS
     END IF
   END FUNCTION KRONECKER_DELTA
 
-  ! Testing harness for fields
+  ! Evaluate fields at a point.
   SUBROUTINE get_fields_at_point(pos,bvec,evec,btens)
     REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
     REAL(num), DIMENSION(3,3), INTENT(INOUT) :: btens

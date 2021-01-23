@@ -108,7 +108,7 @@ PROGRAM pic
     CALL efield_bcs(ex, ey, ez, ng)
     CALL bfield_final_bcs(bx, by, bz, ng)
   ELSE
-    CALL init_trilinos(comm)
+    CALL init_trilinos(local_elements, linear_index, comm)
   END IF
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'

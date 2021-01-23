@@ -315,6 +315,9 @@ MODULE shared_data
   ! Switch between explicit PIC and implicit PIC
   LOGICAL, PARAMETER :: explicit_pic = .FALSE.
 
+  INTEGER, ALLOCATABLE, DIMENSION(:) :: linear_index
+  INTEGER :: local_elements
+
   REAL(num) :: dt, t_end, time, dt_multiplier, dt_laser, dt_plasma_frequency
   REAL(num) :: cfl
   ! x_min is the left-hand edge of the simulation domain as specified in

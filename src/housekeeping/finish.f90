@@ -68,6 +68,8 @@ CONTAINS
 
     IF (ALLOCATED(field_probes)) DEALLOCATE(field_probes)
 
+    IF (ALLOCATED(linear_index)) DEALLOCATE(linear_index)
+
     CALL deallocate_lasers
 
     CALL MPI_COMM_FREE(comm, errcode)

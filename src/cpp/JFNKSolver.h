@@ -19,9 +19,10 @@ class JFNKSolver {
 
   // Epetra objects
   Epetra_MpiComm* Comm;
+  Epetra_Map* Map;
 
  public:
-  JFNKSolver(MPI_Comm &);
+  JFNKSolver(int &, int *, MPI_Comm &);
   ~JFNKSolver();
   void CreateJacobian();
 };

@@ -5,6 +5,16 @@ MODULE particles
 
   IMPLICIT NONE
 
+!Store some pieces of this to speed up the current evaluation.  
+TYPE fields_eval_tmps
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    INTEGER :: cell_x1, cell_y1, cell_z1
+ END TYPE fields_eval_tmps
+
+! Some numerical factors needed for various particle-fields routines.  
+    REAL(num) :: idtyz, idtxz, idtxy
+    REAL(num) :: idx, idy, idz
+
 CONTAINS
 
 
@@ -72,8 +82,6 @@ CONTAINS
     REAL(num) :: wx, wy, wz
 
     ! Temporary variables
-    REAL(num) :: idx, idy, idz
-    REAL(num) :: idtyz, idtxz, idtxy
     REAL(num) :: idt, dto2, dtco2
     REAL(num) :: fcx, fcy, fcz, fjx, fjy, fjz
     REAL(num) :: root, dtfac, gamma, third
@@ -386,6 +394,112 @@ CONTAINS
 
     END SUBROUTINE push_particles_lorentz
 
+    SUBROUTINE push_particles_lorentz_split
+      TYPE(fields_eval_tmps) :: st
+      REAL(num), DIMENSION(3) :: part_pos_t1p5, Bvec, Evec
+
+      current => species%attached_list%head
+
+      IF (.NOT. particles_uniformly_distributed) THEN
+         part_weight = species%weight
+      ENDIF
+
+      !DEC$ VECTOR ALWAYS
+      DO ipart = 1, species%attached_list%count
+         next => current%next
+         IF (particles_uniformly_distributed) THEN
+            part_weight = current%weight
+         ENDIF
+
+         part_q   = current%charge
+         part_mc  = c * current%mass
+         ipart_mc = 1.0_num / part_mc
+         cmratio  = part_q * dtfac * ipart_mc
+         ccmratio = c * cmratio
+
+         ! Copy the particle properties out for speed
+         part_x  = current%part_pos(1) - x_grid_min_local
+         part_y  = current%part_pos(2) - y_grid_min_local
+         part_z  = current%part_pos(3) - z_grid_min_local
+         part_ux = current%part_p(1) * ipart_mc
+         part_uy = current%part_p(2) * ipart_mc
+         part_uz = current%part_p(3) * ipart_mc
+
+         ! Calculate v(t) from p(t)
+         ! See PSC manual page (25-27)
+         root = dtco2 / SQRT(part_ux**2 + part_uy**2 + part_uz**2 + 1.0_num)
+
+         ! Move particles to half timestep position to first order
+         part_x = part_x + part_ux * root
+         part_y = part_y + part_uy * root
+         part_z = part_z + part_uz * root
+
+         CALL get_fields_at_point_store(current%part_pos,Bvec,Evec,st)
+
+         ! update particle momenta using weighted fields
+         uxm = part_ux + cmratio * Evec(1)
+         uym = part_uy + cmratio * Evec(2)
+         uzm = part_uz + cmratio * Evec(3)
+
+         ! Half timestep, then use Boris1970 rotation, see Birdsall and Langdon
+         root = ccmratio / SQRT(uxm**2 + uym**2 + uzm**2 + 1.0_num)
+
+         taux = Bvec(1) * root
+         tauy = Bvec(2) * root
+         tauz = Bvec(3) * root
+
+         taux2 = taux**2
+         tauy2 = tauy**2
+         tauz2 = tauz**2
+
+         tau = 1.0_num / (1.0_num + taux2 + tauy2 + tauz2)
+
+         uxp = ((1.0_num + taux2 - tauy2 - tauz2) * uxm &
+              + 2.0_num * ((taux * tauy + tauz) * uym &
+              + (taux * tauz - tauy) * uzm)) * tau
+         uyp = ((1.0_num - taux2 + tauy2 - tauz2) * uym &
+              + 2.0_num * ((tauy * tauz + taux) * uzm &
+              + (tauy * taux - tauz) * uxm)) * tau
+         uzp = ((1.0_num - taux2 - tauy2 + tauz2) * uzm &
+              + 2.0_num * ((tauz * taux + tauy) * uxm &
+              + (tauz * tauy - taux) * uym)) * tau
+
+         ! Rotation over, go to full timestep
+         part_ux = uxp + cmratio * Evec(1)
+         part_uy = uyp + cmratio * Evec(2)
+         part_uz = uzp + cmratio * Evec(3)
+
+         ! Calculate particle velocity from particle momentum
+         gamma = SQRT(part_ux**2 + part_uy**2 + part_uz**2 + 1.0_num)
+         root = dtco2 / gamma
+
+         delta_x = part_ux * root
+         delta_y = part_uy * root
+         delta_z = part_uz * root
+
+         ! Move particles to end of time step at 2nd order accuracy
+         part_x = part_x + delta_x
+         part_y = part_y + delta_y
+         part_z = part_z + delta_z
+
+         ! particle has now finished move to end of timestep, so copy back
+         ! into particle array
+         current%part_pos = (/ part_x + x_grid_min_local, &
+              part_y + y_grid_min_local, part_z + z_grid_min_local /)
+         current%part_p   = part_mc * (/ part_ux, part_uy, part_uz /)
+
+         ! Now advance to t+1.5dt to calculate current. This is detailed in
+         ! the manual between pages 37 and 41. The version coded up looks
+         ! completely different to that in the manual, but is equivalent.
+         ! Use t+1.5 dt so that can update J to t+dt at 2nd order
+         part_pos_t1p5 = current%part_pos + (/ delta_x, delta_y, delta_z /)
+         CALL current_deposition(part_pos_t1p5,st,(part_weight*part_q))
+
+         current => next
+      ENDDO
+
+    END SUBROUTINE push_particles_lorentz_split
+
     SUBROUTINE push_particles_dk
       REAL(num), DIMENSION(3) :: dRdt, pos_0, pos_h, dRdt_1
       REAL(num), DIMENSION(3) :: bdir, drifts_mu, drifts_vpll
@@ -586,10 +700,152 @@ CONTAINS
     END IF
   END FUNCTION KRONECKER_DELTA
 
-  ! Evaluate fields at a point.
+
+  SUBROUTINE current_deposition(pos,st,chargeweight)
+    REAL(num), DIMENSION(3), INTENT(INOUT) :: pos
+    TYPE(fields_eval_tmps), INTENT(INOUT)  :: st
+    REAL(num), INTENT(IN) :: chargeweight
+
+    REAL(num) :: cell_x_r, cell_y_r, cell_z_r
+    REAL(num) :: part_x, part_y, part_z
+    INTEGER :: cell_x3
+    INTEGER :: cell_y3
+    INTEGER :: cell_z3
+    INTEGER :: dcellx, dcelly, dcellz
+    REAL(num) :: cf2
+    ! Defined at the particle position - 0.5 grid cell in each direction
+    ! This is to deal with the grid stagger
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
+    ! J from a given particle, can be spread over up to 3 cells in
+    ! Each direction due to parabolic weighting. We allocate 4 or 5
+    ! Cells because the position of the particle at t = t+1.5dt is not
+    ! known until later. This part of the algorithm could probably be
+    ! Improved, but at the moment, this is just a straight copy of
+    ! The core of the PSC algorithm
+    INTEGER, PARAMETER :: sf0 = sf_min, sf1 = sf_max
+    REAL(num) :: jxh
+    REAL(num), DIMENSION(sf0-1:sf1+1) :: jyh
+    REAL(num), DIMENSION(sf0-1:sf1+1,sf0-1:sf1+1) :: jzh
+    REAL(num) :: fjx, fjy, fjz
+    ! The fraction of a cell between the particle position and the cell boundary
+    REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
+    INTEGER :: ix, iy, iz, cx, cy, cz
+    REAL(num) :: gz_iz, hz_iz, hygz, hyhz, hzyfac1, hzyfac2, yzfac
+    ! Used by J update
+    INTEGER :: xmin, xmax, ymin, ymax, zmin, zmax
+    REAL(num) :: wx, wy, wz
+    REAL(num), PARAMETER :: third=(1.0_num / 3.0_num)
+    REAL(num) :: xfac1, xfac2, yfac1, yfac2, zfac1, zfac2
+  
+
+    part_x = pos(1) - x_grid_min_local
+    part_y = pos(2) - y_grid_min_local
+    part_z = pos(3) - z_grid_min_local
+
+    cell_x_r = part_x * idx
+    cell_y_r = part_y * idy
+    cell_z_r = part_z * idz
+
+    cell_x3 = FLOOR(cell_x_r + 0.5_num)
+    cell_frac_x = REAL(cell_x3, num) - cell_x_r
+    cell_x3 = cell_x3 + 1
+
+    cell_y3 = FLOOR(cell_y_r + 0.5_num)
+    cell_frac_y = REAL(cell_y3, num) - cell_y_r
+    cell_y3 = cell_y3 + 1
+    
+    cell_z3 = FLOOR(cell_z_r + 0.5_num)
+    cell_frac_z = REAL(cell_z3, num) - cell_z_r
+    cell_z3 = cell_z3 + 1
+
+    hx = 0.0_num
+    hy = 0.0_num
+    hz = 0.0_num
+
+    dcellx = cell_x3 - st%cell_x1
+    dcelly = cell_y3 - st%cell_y1
+    dcellz = cell_z3 - st%cell_z1
+    ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/hx_dcell.inc"
+
+    ! Now change Xi1* to be Xi1*-Xi0*. This makes the representation of
+    ! the current update much simpler
+    hx = hx - st%gx
+    hy = hy - st%gy
+    hz = hz - st%gz
+
+    ! Remember that due to CFL condition particle can never cross more
+    ! than one gridcell in one timestep
+
+    xmin = sf_min + (dcellx - 1) / 2
+    xmax = sf_max + (dcellx + 1) / 2
+    
+    ymin = sf_min + (dcelly - 1) / 2
+    ymax = sf_max + (dcelly + 1) / 2
+    
+    zmin = sf_min + (dcellz - 1) / 2
+    zmax = sf_max + (dcellz + 1) / 2
+
+    fjx = idtyz * chargeweight
+    fjy = idtxz * chargeweight
+    fjz = idtxy * chargeweight
+    
+    jzh = 0.0_num
+    DO iz = zmin, zmax
+       cz = st%cell_z1 + iz
+       zfac1 =         st%gz(iz) + 0.5_num * hz(iz)
+       zfac2 = third * hz(iz) + 0.5_num * st%gz(iz)
+       
+       gz_iz = st%gz(iz)
+       hz_iz = hz(iz)
+       
+       jyh = 0.0_num
+       DO iy = ymin, ymax
+          cy = st%cell_y1 + iy
+          yfac1 =         st%gy(iy) + 0.5_num * hy(iy)
+          yfac2 = third * hy(iy) + 0.5_num * st%gy(iy)
+          
+          hygz = hy(iy) * gz_iz
+          hyhz = hy(iy) * hz_iz
+          yzfac = st%gy(iy) * zfac1 + hy(iy) * zfac2
+          hzyfac1 = hz_iz * yfac1
+          hzyfac2 = hz_iz * yfac2
+          
+          jxh = 0.0_num
+          DO ix = xmin, xmax
+             cx = st%cell_x1 + ix
+             xfac1 =         st%gx(ix) + 0.5_num * hx(ix)
+             xfac2 = third * hx(ix) + 0.5_num * st%gx(ix)
+             
+             wx = hx(ix) * yzfac
+             wy = xfac1 * hygz + xfac2 * hyhz
+             wz = st%gx(ix) * hzyfac1 + hx(ix) * hzyfac2
+             
+             ! This is the bit that actually solves d(rho)/dt = -div(J)
+             jxh = jxh - fjx * wx
+             jyh(ix) = jyh(ix) - fjy * wy
+             jzh(ix, iy) = jzh(ix, iy) - fjz * wz
+             
+             jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
+             jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
+             jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)
+          ENDDO
+       ENDDO
+    ENDDO
+  END SUBROUTINE current_deposition
+
   SUBROUTINE get_fields_at_point(pos,bvec,evec,btens)
     REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
     REAL(num), DIMENSION(3,3), INTENT(INOUT) :: btens
+    TYPE(fields_eval_tmps) :: st
+    CALL get_fields_at_point_store(pos,bvec,evec,st,btens)
+  END SUBROUTINE
+ 
+  ! Evaluate fields at a point.
+  SUBROUTINE get_fields_at_point_store(pos,bvec,evec,st,btens)
+    TYPE(fields_eval_tmps), INTENT(INOUT) :: st
+    REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
+    REAL(num), DIMENSION(3,3), INTENT(INOUT), OPTIONAL :: btens
     REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     ! Fields at particle location
@@ -604,6 +860,7 @@ CONTAINS
     REAL(num) :: part_x, part_y, part_z
     ! The fraction of a cell between the particle position and the cell boundary
     REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
+
     ! Weighting factors as Eqn 4.77 page 25 of manual
     ! Eqn 4.77 would be written as
     ! F(j-1) * gmx + F(j) * g0x + F(j+1) * gpx
@@ -691,10 +948,21 @@ CONTAINS
     Evec  = Evec*fac
     Bvec  = Bvec*fac
 
-    CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
-         & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)  
 
-  END SUBROUTINE get_fields_at_point
+     !Temporary storage for current deposition.
+     st%gx = gx
+     st%gy = gy
+     st%gz = gz
+
+     st%cell_x1 = cell_x1
+     st%cell_y1 = cell_y1
+     st%cell_z1 = cell_z1    
+     
+     IF(present(Btens)) THEN
+        CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+             & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)  
+     END IF
+   END SUBROUTINE get_fields_at_point_store
 
   SUBROUTINE postsetup_testing
     REAL(num), DIMENSION(3)   :: pos,bvec,evec

@@ -70,9 +70,10 @@ MODULE constants
   INTEGER, PARAMETER :: c_err_other = 2**10
   INTEGER, PARAMETER :: c_err_warn_bad_value = 2**11
   INTEGER, PARAMETER :: c_err_generic_warning = 2**12
-  INTEGER, PARAMETER :: c_err_generic_error = 2**13
-  INTEGER, PARAMETER :: c_err_io = 2**14
-  INTEGER, PARAMETER :: c_err_setup = 2**15
+  INTEGER, PARAMETER :: c_err_io = 2**13
+  INTEGER, PARAMETER :: c_err_setup = 2**14
+  INTEGER, PARAMETER :: c_err_not_implemented = 2**15
+  INTEGER, PARAMETER :: c_err_generic_error = 2**16
 
   INTEGER, PARAMETER :: c_ds_first = 1
   INTEGER, PARAMETER :: c_ds_last = 2
@@ -307,6 +308,9 @@ MODULE shared_data
 
   ! Control use of Esirkepov (charge conserving) current deposition
   LOGICAL :: use_esirkepov = .TRUE.
+
+  ! Switch between explicit PIC and implicit PIC
+  LOGICAL, PARAMETER :: explicit_pic = .TRUE.
 
   REAL(num) :: dt, t_end, time, dt_multiplier, dt_laser, dt_plasma_frequency
   REAL(num) :: cfl

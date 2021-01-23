@@ -283,8 +283,8 @@ custom_laser.o: custom_laser.f90 shared_data.o
 deck.o: deck.f90 shared_data.o timer.o fields.o
 diagnostics.o: diagnostics.F90 calc_df.o shared_data.o strings.o timer.o
 epoch3d.o: epoch3d.F90 balance.o deck.o diagnostics.o fields.o finish.o \
-  helper.o ic_module.o mpi_routines.o particles.o problem_setup.o \
-  shared_data.o setup.o welcome.o pat_mpi_lib_interface.o
+  helper.o ic_module.o mpi_routines.o particles.o problem_setup.o setup.o \
+  shared_data.o welcome.o pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
 helper.o: helper.F90 boundary.o deltaf_loader.o particle_init.o partlist.o \

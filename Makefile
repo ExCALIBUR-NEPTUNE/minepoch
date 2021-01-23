@@ -217,6 +217,18 @@ SRCFILES = balance.F90 boundary.f90 calc_df.F90 current_deposition.F90 \
 OBJFILES := $(SRCFILES:.f90=.o)
 OBJFILES := $(OBJFILES:.F90=.o)
 
+# C++/Trilinos Interface Files
+ifneq (,$(findstring TRILINOS,$(DEFINES)))
+  CPPDIR = $(SRCDIR)/cpp
+
+  SRCFILESCPP = TrilinosInterface.cpp
+
+  OBJFILES += $(SRCFILESCPP:.cpp=.o)
+
+  # Dependencies
+  TRILINOSDEPS = TrilinosInterface.o
+endif
+
 INCLUDES = $(INCDIR)/bspline3/b_part.inc $(INCDIR)/bspline3/e_part.inc \
   $(INCDIR)/bspline3/gx.inc $(INCDIR)/bspline3/gxfac.inc \
   $(INCDIR)/bspline3/hx_dcell.inc
@@ -226,7 +238,7 @@ OBJFILES := $(OBJFILES)
 FULLTARGET = $(BINDIR)/$(TARGET)
 
 VPATH = $(SRCDIR):$(SRCDIR)/deck:$(SRCDIR)/housekeeping:$(SRCDIR)/io:\
-  $(SRCDIR)/parser:$(SRCDIR)/user_interaction:$(OBJDIR)
+  $(SRCDIR)/parser:$(SRCDIR)/user_interaction:$(CPPDIR):$(OBJDIR)
 
 $(SRCDIR)/COMMIT: FORCE
 	@sh $(SRCDIR)/gen_commit_string.sh || $(MAKE) $(MAKECMDGOALS)
@@ -239,6 +251,9 @@ $(SRCDIR)/COMMIT: FORCE
 
 %.o: %.F90
 	$(FC) -c $(FFLAGS) -o $(OBJDIR)/$@ $(PREPROFLAGS) $<
+
+%.o: %.cpp
+	$(CXX) -c $(CFLAGS) -o $(OBJDIR)/$@ $<
 
 main: $(FULLTARGET)
 $(FULLTARGET): $(OBJFILES)
@@ -284,7 +299,7 @@ deck.o: deck.f90 shared_data.o timer.o fields.o
 diagnostics.o: diagnostics.F90 calc_df.o shared_data.o strings.o timer.o
 epoch3d.o: epoch3d.F90 balance.o deck.o diagnostics.o fields.o finish.o \
   helper.o ic_module.o mpi_routines.o particles.o problem_setup.o setup.o \
-  shared_data.o welcome.o pat_mpi_lib_interface.o
+  shared_data.o $(TRILINOSDEPS) welcome.o pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
 helper.o: helper.F90 boundary.o deltaf_loader.o particle_init.o partlist.o \

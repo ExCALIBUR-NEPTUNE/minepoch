@@ -107,6 +107,8 @@ PROGRAM pic
     CALL particle_bcs
     CALL efield_bcs(ex, ey, ez, ng)
     CALL bfield_final_bcs(bx, by, bz, ng)
+  ELSE
+    CALL init_trilinos
   END IF
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'
@@ -201,6 +203,10 @@ PROGRAM pic
     CALL create_full_timestring(runtime, timestring)
     WRITE(*,*) 'Final runtime of core = ' // TRIM(timestring)
   ENDIF
+
+  IF (.NOT. explicit_pic) THEN
+    CALL end_trilinos
+  END IF
 
   CALL finalise
 

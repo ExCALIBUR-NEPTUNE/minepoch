@@ -9,6 +9,14 @@ JFNKSolver::JFNKSolver(int & NumMyElements, int * MyGlobalElements, MPI_Comm &Ol
   // Set-up map
   this->Map = new Epetra_Map(-1, NumMyElements, MyGlobalElements, 0, *Comm);
 
+  // Create Epetra vectors
+  rhs = new Epetra_Vector(*Map);
+  x = new Epetra_Vector(*Map);
+
+  // Set LHS and RHS of problem
+  Problem.SetLHS(x);
+  Problem.SetRHS(rhs);
+
   // Set-up Linear Problem
   AztecSolver = new AztecOO(Problem);
 
@@ -40,6 +48,8 @@ JFNKSolver::JFNKSolver(int & NumMyElements, int * MyGlobalElements, MPI_Comm &Ol
 
 JFNKSolver::~JFNKSolver() {
   delete AztecSolver;
+  delete rhs;
+  delete x;
 }
 
 void JFNKSolver::CreateJacobian() {

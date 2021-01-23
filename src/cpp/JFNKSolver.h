@@ -21,6 +21,10 @@ class JFNKSolver {
   Epetra_MpiComm* Comm;
   Epetra_Map* Map;
 
+  // Epetra vectors
+  Epetra_Vector* rhs;
+  Epetra_Vector* x;
+
  public:
   JFNKSolver(int &, int *, MPI_Comm &);
   ~JFNKSolver();

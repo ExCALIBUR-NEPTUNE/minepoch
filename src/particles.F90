@@ -131,7 +131,7 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk
        ELSE
-          CALL push_particles_lorentz
+          CALL push_particles_lorentz_split
        END IF
 
     ENDDO
@@ -396,7 +396,7 @@ CONTAINS
 
     SUBROUTINE push_particles_lorentz_split
       TYPE(fields_eval_tmps) :: st
-      REAL(num), DIMENSION(3) :: part_pos_t1p5, Bvec, Evec
+      REAL(num), DIMENSION(3) :: part_pos_t1p5, pos_half, Bvec, Evec
 
       current => species%attached_list%head
 
@@ -418,9 +418,6 @@ CONTAINS
          ccmratio = c * cmratio
 
          ! Copy the particle properties out for speed
-         part_x  = current%part_pos(1) - x_grid_min_local
-         part_y  = current%part_pos(2) - y_grid_min_local
-         part_z  = current%part_pos(3) - z_grid_min_local
          part_ux = current%part_p(1) * ipart_mc
          part_uy = current%part_p(2) * ipart_mc
          part_uz = current%part_p(3) * ipart_mc
@@ -430,11 +427,8 @@ CONTAINS
          root = dtco2 / SQRT(part_ux**2 + part_uy**2 + part_uz**2 + 1.0_num)
 
          ! Move particles to half timestep position to first order
-         part_x = part_x + part_ux * root
-         part_y = part_y + part_uy * root
-         part_z = part_z + part_uz * root
-
-         CALL get_fields_at_point_store(current%part_pos,Bvec,Evec,st)
+         pos_half = current%part_pos + root * (/ part_ux, part_uy, part_uz /)
+         CALL get_fields_at_point_store(pos_half,Bvec,Evec,st_half)
 
          ! update particle momenta using weighted fields
          uxm = part_ux + cmratio * Evec(1)
@@ -478,14 +472,9 @@ CONTAINS
          delta_z = part_uz * root
 
          ! Move particles to end of time step at 2nd order accuracy
-         part_x = part_x + delta_x
-         part_y = part_y + delta_y
-         part_z = part_z + delta_z
-
-         ! particle has now finished move to end of timestep, so copy back
-         ! into particle array
-         current%part_pos = (/ part_x + x_grid_min_local, &
-              part_y + y_grid_min_local, part_z + z_grid_min_local /)
+         ! particle has now finished move to end of timestep, place data
+         ! in particle array
+         current%part_pos = pos_half + (/delta_x, delta_y, delta_z/)
          current%part_p   = part_mc * (/ part_ux, part_uy, part_uz /)
 
          ! Now advance to t+1.5dt to calculate current. This is detailed in

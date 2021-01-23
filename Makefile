@@ -179,6 +179,8 @@ ifneq (,$(findstring TRILINOS,$(DEFINES)))
   CLANG := $(shell $(CXX) --version | grep 'clang')
   ifneq ($(CLANG),)
     LD = $(CXX)
+  else
+    LDFLAGS+= -lstdc++
   endif
 endif
 

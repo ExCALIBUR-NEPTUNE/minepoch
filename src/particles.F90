@@ -14,7 +14,6 @@ TYPE fields_eval_tmps
 ! Some numerical factors needed for various particle-fields routines.  
     REAL(num) :: idtyz, idtxz, idtxy
     REAL(num) :: idx, idy, idz
-
 CONTAINS
 
 
@@ -395,7 +394,7 @@ CONTAINS
     END SUBROUTINE push_particles_lorentz
 
     SUBROUTINE push_particles_lorentz_split
-      TYPE(fields_eval_tmps) :: st
+      TYPE(fields_eval_tmps) :: st_half
       REAL(num), DIMENSION(3) :: part_pos_t1p5, pos_half, Bvec, Evec
 
       current => species%attached_list%head
@@ -482,7 +481,10 @@ CONTAINS
          ! completely different to that in the manual, but is equivalent.
          ! Use t+1.5 dt so that can update J to t+dt at 2nd order
          part_pos_t1p5 = current%part_pos + (/ delta_x, delta_y, delta_z /)
-         CALL current_deposition(part_pos_t1p5,st,(part_weight*part_q))
+         !Current deposition uses position at t+0.5dt and t+1.5dt, particle
+         !assumed to travel in direct line between these locations. Second order 
+         !in time for evaluation of current at t+dt 
+         CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_q))
 
          current => next
       ENDDO
@@ -689,8 +691,20 @@ CONTAINS
     END IF
   END FUNCTION KRONECKER_DELTA
 
+  !Do current deposition of particle moving along straight line
+  !from pos0 to pos1, with chargeweight = weight*charge
+  SUBROUTINE current_deposition(pos0,pos1,chargeweight)
+    REAL(num), DIMENSION(3), INTENT(INOUT) :: pos0,pos1
+    REAL(num), INTENT(IN) :: chargeweight
+    TYPE(fields_eval_tmps)  :: st0
 
-  SUBROUTINE current_deposition(pos,st,chargeweight)
+    CALL calc_stdata(pos0,st0)
+    CALL current_deposition_store(st0,pos1,chargeweight)
+  END SUBROUTINE current_deposition
+
+  !Do current deposition, reusing some precalculated data (in st)
+  !Particle has moved from pos0 (data stored in st) to pos
+  SUBROUTINE current_deposition_store(st,pos,chargeweight)
     REAL(num), DIMENSION(3), INTENT(INOUT) :: pos
     TYPE(fields_eval_tmps), INTENT(INOUT)  :: st
     REAL(num), INTENT(IN) :: chargeweight
@@ -821,15 +835,67 @@ CONTAINS
           ENDDO
        ENDDO
     ENDDO
-  END SUBROUTINE current_deposition
+  END SUBROUTINE current_deposition_store
 
   SUBROUTINE get_fields_at_point(pos,bvec,evec,btens)
     REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
     REAL(num), DIMENSION(3,3), INTENT(INOUT) :: btens
     TYPE(fields_eval_tmps) :: st
     CALL get_fields_at_point_store(pos,bvec,evec,st,btens)
-  END SUBROUTINE
+  END SUBROUTINE get_fields_at_point
  
+  ! Utility routine for calculating cell offsets and weights
+  ! at a position.
+  SUBROUTINE calc_stdata(pos,st)
+    TYPE(fields_eval_tmps), INTENT(INOUT) :: st
+    REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos
+    INTEGER :: cell_x1, cell_y1, cell_z1
+    REAL(num) :: cell_x_r, cell_y_r, cell_z_r
+    REAL(num) :: part_x, part_y, part_z
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
+    REAL(num) :: cf2
+
+    part_x = pos(1) - x_grid_min_local
+    part_y = pos(2) - y_grid_min_local
+    part_z = pos(3) - z_grid_min_local
+
+    ! Grid cell position as a fraction.
+    cell_x_r = part_x * idx
+    cell_y_r = part_y * idy
+    cell_z_r = part_z * idz
+    ! Round cell position to nearest cell
+    cell_x1 = FLOOR(cell_x_r + 0.5_num)
+    ! Calculate fraction of cell between nearest cell boundary and particle
+    cell_frac_x = REAL(cell_x1, num) - cell_x_r
+    cell_x1 = cell_x1 + 1
+
+    cell_y1 = FLOOR(cell_y_r + 0.5_num)
+    cell_frac_y = REAL(cell_y1, num) - cell_y_r
+    cell_y1 = cell_y1 + 1
+
+    cell_z1 = FLOOR(cell_z_r + 0.5_num)
+    cell_frac_z = REAL(cell_z1, num) - cell_z_r
+    cell_z1 = cell_z1 + 1
+
+    ! Particle weight factors as described in the manual, page25
+    ! These weight grid properties onto particles
+    ! Also used to weight particle properties onto grid, used later
+    ! to calculate J
+    ! NOTE: These weights require an additional multiplication factor!
+#include "bspline3/gx.inc"
+
+    !Temporary storage for current deposition.
+    st%gx = gx
+    st%gy = gy
+    st%gz = gz
+
+    st%cell_x1 = cell_x1
+    st%cell_y1 = cell_y1
+    st%cell_z1 = cell_z1    
+  END SUBROUTINE calc_stdata
+
+
   ! Evaluate fields at a point.
   SUBROUTINE get_fields_at_point_store(pos,bvec,evec,st,btens)
     TYPE(fields_eval_tmps), INTENT(INOUT) :: st
@@ -862,10 +928,6 @@ CONTAINS
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
     ! Spatial derivative of same
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
-
-    idx = 1.0_num / dx
-    idy = 1.0_num / dy
-    idz = 1.0_num / dz
 
     part_x = pos(1) - x_grid_min_local
     part_y = pos(2) - y_grid_min_local

@@ -2,10 +2,14 @@
 
 extern "C" {
 
-  void init_trilinos_() {
+  void init_trilinos_(int& ForComm) {
+
+    MPI_Comm Comm;
+    // This function obtains a valid C handle to the Fortran MPI communicator
+    Comm = MPI_Comm_f2c(ForComm);
 
     // Create the solver instance
-    PICSolver = new JFNKSolver();
+    PICSolver = new JFNKSolver(Comm);
 
     std::cout << "Init trilinos not implemented yet!" << std::endl;
     MPI_Abort(MPI_COMM_WORLD, c_err_not_implemented);

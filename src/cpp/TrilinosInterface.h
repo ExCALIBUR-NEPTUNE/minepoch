@@ -18,7 +18,7 @@ JFNKSolver *PICSolver;
 
 extern "C" {
 
-  void init_trilinos_();
+  void init_trilinos_(int &);
   void end_trilinos_();
 
 }

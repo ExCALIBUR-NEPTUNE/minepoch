@@ -1,8 +1,10 @@
 #include "JFNKSolver.h"
 
-JFNKSolver::JFNKSolver() {
+JFNKSolver::JFNKSolver(MPI_Comm &OldComm) {
 
-  // TODO Set-up Problem. Needs map.
+  // Set-up the communicator and distributed objects
+  // MPI_COMM_WORLD -is- an acceptable input here. See Epetra_MpiComm doxygen.
+  this->Comm = new Epetra_MpiComm(OldComm);
 
   // Set-up Linear Problem
   AztecSolver = new AztecOO(Problem);

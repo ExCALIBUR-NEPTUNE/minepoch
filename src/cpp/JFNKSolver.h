@@ -6,6 +6,7 @@
 
 #include "AztecOO.h"
 #include "Epetra_LinearProblem.h"
+#include "Epetra_MpiComm.h"
 
 // EPOCH3D errorcode
 extern "C" int c_err_not_implemented;
@@ -16,8 +17,11 @@ class JFNKSolver {
   Epetra_LinearProblem Problem;
   AztecOO *AztecSolver;
 
+  // Epetra objects
+  Epetra_MpiComm* Comm;
+
  public:
-  JFNKSolver();
+  JFNKSolver(MPI_Comm &);
   ~JFNKSolver();
   void CreateJacobian();
 };

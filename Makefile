@@ -163,6 +163,25 @@ DEFINES += $(D)PARTICLE_SHAPE_BSPLINE3
 # are enabled.
 #DEFINES += $(D)PARSER_CHECKING
 
+# Enable linking with Trilinos
+#DEFINES += $(D)TRILINOS
+
+ifneq (,$(findstring TRILINOS,$(DEFINES)))
+  # Up to the user to create, copy, or link this file
+  include Makefile.export.Trilinos
+  # Trilinos libraries and header files
+  INCLUDE = $(Trilinos_INCLUDE_DIRS) $(Trilinos_TPL_INCLUDE_DIRS)
+  LIBDIR = $(Trilinos_LIBRARY_DIRS) $(Trilinos_TPL_LIBRARY_DIRS)
+  LIB = $(Trilinos_LIBRARIES) $(Trilinos_TPL_LIBRARIES)
+  LDFLAGS += $(LIBDIR) $(LIB) $(Trilinos_EXTRA_LD_FLAGS)
+  CXX = $(Trilinos_CXX_COMPILER)
+  LD = $(CXX)
+endif
+
+# Use FC for LD unless specified otherwise
+ifeq ($(origin LD),default)
+  LD = $(FC)
+endif
 
 # --------------------------------------------------
 # Shouldn't need to touch below here
@@ -220,7 +239,7 @@ $(SRCDIR)/COMMIT: FORCE
 main: $(FULLTARGET)
 $(FULLTARGET): $(OBJFILES)
 	@mkdir -p $(BINDIR)
-	$(FC) -o $@ $(addprefix $(OBJDIR)/,$(OBJFILES)) $(LDFLAGS)
+	$(LD) -o $@ $(addprefix $(OBJDIR)/,$(OBJFILES)) $(LDFLAGS)
 
 clean:
 	@rm -rf $(BINDIR) $(OBJDIR)

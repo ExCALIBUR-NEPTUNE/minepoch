@@ -175,7 +175,11 @@ ifneq (,$(findstring TRILINOS,$(DEFINES)))
   LIB = $(Trilinos_LIBRARIES) $(Trilinos_TPL_LIBRARIES)
   LDFLAGS += $(LIBDIR) $(LIB) $(Trilinos_EXTRA_LD_FLAGS)
   CXX = $(Trilinos_CXX_COMPILER)
-  LD = $(CXX)
+  # Check for clang. If so use CXX as linker
+  CLANG := $(shell $(CXX) --version | grep 'clang')
+  ifneq ($(CLANG),)
+    LD = $(CXX)
+  endif
 endif
 
 # Use FC for LD unless specified otherwise

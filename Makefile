@@ -223,12 +223,12 @@ OBJFILES := $(OBJFILES:.F90=.o)
 ifneq (,$(findstring TRILINOS,$(DEFINES)))
   CPPDIR = $(SRCDIR)/cpp
 
-  SRCFILESCPP = TrilinosInterface.cpp
+  SRCFILESCPP = JFNKSolver.cpp TrilinosInterface.cpp
 
   OBJFILES += $(SRCFILESCPP:.cpp=.o)
 
   # Dependencies
-  TRILINOSDEPS = TrilinosInterface.o
+  TRILINOSDEPS = JFNKSolver.o TrilinosInterface.o
 endif
 
 INCLUDES = $(INCDIR)/bspline3/b_part.inc $(INCDIR)/bspline3/e_part.inc \
@@ -255,7 +255,7 @@ $(SRCDIR)/COMMIT: FORCE
 	$(FC) -c $(FFLAGS) -o $(OBJDIR)/$@ $(PREPROFLAGS) $<
 
 %.o: %.cpp
-	$(CXX) -c $(CFLAGS) -o $(OBJDIR)/$@ $<
+	$(CXX) -c $(CFLAGS) $(Trilinos_INCLUDE_DIRS) $(Trilinos_TPL_INCLUDE_DIRS) -o $(OBJDIR)/$@ $<
 
 main: $(FULLTARGET)
 $(FULLTARGET): $(OBJFILES)

@@ -4,8 +4,14 @@
 #include <mpi.h>
 #include <iostream>
 
+#include "JFNKSolver.h"
+
 // EPOCH3D errorcode
 extern "C" int c_err_not_implemented;
+
+// Global variables
+
+JFNKSolver *PICSolver;
 
 // Fortran/C/C++ interface routines.
 // Called from Fortran code

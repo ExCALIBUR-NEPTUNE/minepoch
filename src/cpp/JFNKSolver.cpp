@@ -1,6 +1,8 @@
 #include "JFNKSolver.h"
 
-JFNKSolver::JFNKSolver(int & NumMyElements, int * MyGlobalElements, MPI_Comm &OldComm) {
+JFNKSolver::JFNKSolver(int NumMyElements_, int * MyGlobalElements, MPI_Comm &OldComm) :
+  NumMyElements(NumMyElements_)
+{
 
   // Set-up the communicator and distributed objects
   // MPI_COMM_WORLD -is- an acceptable input here. See Epetra_MpiComm doxygen.
@@ -75,4 +77,32 @@ void JFNKSolver::CreateJacobian() {
   Problem.SetOperator(&(*JacFree));
   // Used in calculation perturbation. 1e-6 is default value
   JacFree->setLambda(1e-6);
+}
+
+void JFNKSolver::Solve(int &niter, double *x0, double *p) {
+
+  double norm;
+
+  Epetra_Vector guess(Copy, *Map, x0);
+
+  Interface->computeF(guess,*rhs,JFNKInterface::Residual);
+
+  rhs->Norm2(&norm);
+  // TODO toggle this output
+  std::cout << "||b|| =" << norm << std::endl;
+
+  JacFree->computeJacobian(guess,*JacFree);
+
+  // Set the initial guess to zero
+  x->Scale(0.);
+
+  // TODO add control for this value
+  AztecSolver->Iterate(300,1e-6);
+
+  // Copy solution vector to p
+  double *values;
+  x->ExtractView(&values);
+  for(int i=0; i<NumMyElements; i++){
+    p[i]=values[i];
+  }
 }

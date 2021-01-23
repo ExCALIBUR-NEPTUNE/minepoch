@@ -34,10 +34,13 @@ class JFNKSolver {
   // Matrix free operator
   Teuchos::RCP<NOX::Epetra::MatrixFree> JacFree;
 
+  int NumMyElements;
+
 public:
-  JFNKSolver(int &, int *, MPI_Comm &);
+  JFNKSolver(int, int *, MPI_Comm &);
   ~JFNKSolver();
   void CreateJacobian();
+  void Solve(int&, double *, double *);
 };
 
 #endif

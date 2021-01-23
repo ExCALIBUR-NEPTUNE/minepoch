@@ -10,9 +10,6 @@ extern "C" {
 
     // Create the solver instance
     PICSolver = new JFNKSolver(NumMyElements, MyGlobalElements, Comm);
-
-    std::cout << "Init trilinos not implemented yet!" << std::endl;
-    MPI_Abort(MPI_COMM_WORLD, c_err_not_implemented);
   }
 
   void end_trilinos_() {

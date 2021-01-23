@@ -17,6 +17,9 @@ JFNKSolver::JFNKSolver(int & NumMyElements, int * MyGlobalElements, MPI_Comm &Ol
   Problem.SetLHS(x);
   Problem.SetRHS(rhs);
 
+  // Create Jacobian
+  this->CreateJacobian();
+
   // Set-up Linear Problem
   AztecSolver = new AztecOO(Problem);
 
@@ -41,9 +44,6 @@ JFNKSolver::JFNKSolver(int & NumMyElements, int * MyGlobalElements, MPI_Comm &Ol
   // Turn off built-in preconditioning method
   // Any preconditioning options should be set here.
   AztecSolver->SetAztecOption(AZ_precond,AZ_none);
-
-  // Create Jacobian
-  this->CreateJacobian();
 }
 
 JFNKSolver::~JFNKSolver() {
@@ -53,6 +53,26 @@ JFNKSolver::~JFNKSolver() {
 }
 
 void JFNKSolver::CreateJacobian() {
-  std::cout << "JFNKSolver::CreateJacobian not implemented yet!" << std::endl;
-  MPI_Abort(MPI_COMM_WORLD, c_err_not_implemented);
+
+  // Create the Jacobian interface
+  Interface = Teuchos::rcp( new JFNKInterface() );
+
+  // Create a NOX::Epetra::Vector (for the FiniteDifference class contructor)
+  Teuchos::RCP<Epetra_Vector> Guess = Teuchos::rcp(new Epetra_Vector(*Map));
+  NOX::Epetra::Vector noxGuess(Guess, NOX::Epetra::Vector::CreateView);
+
+  // Create top level parameter list. Extra output sublist.
+  Teuchos::RCP<Teuchos::ParameterList> nlParamsPtr = Teuchos::rcp(new Teuchos::ParameterList);
+  Teuchos::ParameterList & nlParams = *(nlParamsPtr.get());
+  Teuchos::ParameterList & printParams = nlParams.sublist("Printing");
+  // TODO Fix MyPID
+  printParams.set("MyPID",0);
+  printParams.set("Output Precision",3);
+  printParams.set("Output Processor",0);
+
+  // Final argument is boolean controlling use of perturbation type
+  JacFree = Teuchos::rcp(new NOX::Epetra::MatrixFree(printParams,Interface,noxGuess,false));
+  Problem.SetOperator(&(*JacFree));
+  // Used in calculation perturbation. 1e-6 is default value
+  JacFree->setLambda(1e-6);
 }

@@ -7,6 +7,9 @@
 #include "AztecOO.h"
 #include "Epetra_LinearProblem.h"
 #include "Epetra_MpiComm.h"
+#include <NOX_Epetra_MatrixFree.H>
+
+#include "JFNKInterface.h"
 
 // EPOCH3D errorcode
 extern "C" int c_err_not_implemented;
@@ -25,7 +28,13 @@ class JFNKSolver {
   Epetra_Vector* rhs;
   Epetra_Vector* x;
 
- public:
+  // Jacobian interface
+  Teuchos::RCP<JFNKInterface> Interface;
+
+  // Matrix free operator
+  Teuchos::RCP<NOX::Epetra::MatrixFree> JacFree;
+
+public:
   JFNKSolver(int &, int *, MPI_Comm &);
   ~JFNKSolver();
   void CreateJacobian();

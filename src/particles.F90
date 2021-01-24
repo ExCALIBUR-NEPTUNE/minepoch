@@ -130,7 +130,7 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk
        ELSE
-          CALL push_particles_lorentz_split
+          CALL push_particles_lorentz
        END IF
 
     ENDDO
@@ -388,6 +388,7 @@ CONTAINS
                ENDDO
             ENDDO
          ENDDO
+
          current => next
       ENDDO
 
@@ -679,7 +680,6 @@ CONTAINS
           end do
        end do
     end do
-    Btens = Btens*fac
   END SUBROUTINE calc_Btens
 
   INTEGER FUNCTION kronecker_delta(a,b)
@@ -883,6 +883,9 @@ CONTAINS
     ! Also used to weight particle properties onto grid, used later
     ! to calculate J
     ! NOTE: These weights require an additional multiplication factor!
+    gx=0
+    gy=0
+    gz=0
 #include "bspline3/gx.inc"
 
     !Temporary storage for current deposition.
@@ -910,7 +913,6 @@ CONTAINS
     INTEGER :: cell_y1, cell_y2
     INTEGER :: cell_z1, cell_z2
     INTEGER :: dcellx, dcelly, dcellz
-    REAL(num) :: idx, idy, idz
     REAL(num) :: cf2
     REAL(num) :: part_x, part_y, part_z
     ! The fraction of a cell between the particle position and the cell boundary
@@ -928,6 +930,10 @@ CONTAINS
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
     ! Spatial derivative of same
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
+
+    gx=0
+    gy=0
+    gz=0
 
     part_x = pos(1) - x_grid_min_local
     part_y = pos(2) - y_grid_min_local
@@ -957,10 +963,11 @@ CONTAINS
     ! to calculate J
     ! NOTE: These weights require an additional multiplication factor!
 #include "bspline3/gx.inc"
-    CALL h_derivs(gdx,gx,0,cell_frac_x,idx)
-    CALL h_derivs(gdy,gy,0,cell_frac_y,idy)
-    CALL h_derivs(gdz,gz,0,cell_frac_z,idz)
-
+    IF(present(Btens)) THEN
+       CALL h_derivs(gdx,gx,0,cell_frac_x,idx)
+       CALL h_derivs(gdy,gy,0,cell_frac_y,idy)
+       CALL h_derivs(gdz,gz,0,cell_frac_z,idz)
+    END IF
     ! Now redo shifted by half a cell due to grid stagger.
     ! Use shifted version for ex in X, ey in Y, ez in Z
     ! And in Y&Z for bx, X&Z for by, X&Y for bz
@@ -981,9 +988,6 @@ CONTAINS
     dcellz = 0
     ! NOTE: These weights require an additional multiplication factor!
 #include "bspline3/hx_dcell.inc"
-    CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
-    CALL h_derivs(hdy,hy,dcelly,cell_frac_y,idy)
-    CALL h_derivs(hdz,hz,dcellz,cell_frac_z,idz)
     ! These are the electric and magnetic fields interpolated to the
     ! particle position. They have been checked and are correct.
     ! Actually checking this is messy.
@@ -995,10 +999,6 @@ CONTAINS
     Bvec(1) = Bx_part
     Bvec(2) = By_part
     Bvec(3) = Bz_part
-    ! This is the shape function partition-of-unity factor.
-    Evec  = Evec*fac
-    Bvec  = Bvec*fac
-
 
      !Temporary storage for current deposition.
      st%gx = gx
@@ -1010,8 +1010,11 @@ CONTAINS
      st%cell_z1 = cell_z1    
      
      IF(present(Btens)) THEN
-        CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
-             & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)  
+       CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
+       CALL h_derivs(hdy,hy,dcelly,cell_frac_y,idy)
+       CALL h_derivs(hdz,hz,dcellz,cell_frac_z,idz)
+       CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+            & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)  
      END IF
    END SUBROUTINE get_fields_at_point_store
 
@@ -1021,15 +1024,7 @@ CONTAINS
     REAL(num), DIMENSION(3)   ::  drifts_mu,drifts_vpll,ExB,bdir
     REAL(num)                 :: bdir_dotgradBmag 
 
-    INTEGER :: i,j !,k
-    !    do i=1-ng,nx+ng
-    !    do j=1-ng,ny+ng
-    !    do k=1-ng,nz+ng
-    !       WRITE(*,*) i,j,k,ex(i,j,k),bx(i,j,k)
-    !    end do
-    ! end do
-    !end do
-    !    STOP
+    INTEGER :: i,j 
 
     WRITE (*,*) 'xminmax',x_grid_min_local, x_grid_max_local
     pos(1) =  x_grid_min_local

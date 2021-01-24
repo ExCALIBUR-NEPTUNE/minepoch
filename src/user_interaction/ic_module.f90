@@ -22,8 +22,8 @@ CONTAINS
 
     INTEGER, INTENT(IN) :: deck_state
 
-    !CALL two_stream_setup(deck_state)
-    CALL dk_setup(deck_state)
+    CALL two_stream_setup(deck_state)
+    !CALL dk_setup(deck_state)
 
   END SUBROUTINE custom_problem_setup
 

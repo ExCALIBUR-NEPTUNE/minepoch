@@ -81,6 +81,7 @@ CONTAINS
 
       IF(species%is_driftkinetic) THEN
          CALL setup_particle_driftkinetic(species)
+         drift_kinetic_species_exist = .true.
       END IF
 
       IF (rank == 0) THEN

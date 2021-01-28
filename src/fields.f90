@@ -292,9 +292,28 @@ CONTAINS
 
   END SUBROUTINE update_eb_fields_half
 
-
+  SUBROUTINE rewind_fields_halfstep
+    ex = ex_back
+    ey = ey_back
+    ez = ez_back
+    bx = bx_back
+    by = by_back
+    bz = bz_back
+  END SUBROUTINE rewind_fields_halfstep
 
   SUBROUTINE update_eb_fields_final
+    IF(drift_kinetic_species_exist) THEN
+       !Save EM fields to a temporary to allow us to rewind half a step
+       ex_back = ex
+       ey_back = ey
+       ez_back = ez
+       bx_back = bx
+       by_back = by
+       bz_back = bz
+       jx = jx + jx_d
+       jy = jy + jy_d
+       jz = jz + jz_d
+    END IF
     IF(fixed_fields) RETURN
 
     hdt  = 0.5_num * dt

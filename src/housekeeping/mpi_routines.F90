@@ -342,6 +342,18 @@ CONTAINS
     ALLOCATE(jy(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
     ALLOCATE(jz(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
 
+
+!   For two-step RK.
+    ALLOCATE(ex_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+    ALLOCATE(ey_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+    ALLOCATE(ez_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+    ALLOCATE(bx_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+    ALLOCATE(by_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+    ALLOCATE(bz_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+    ALLOCATE(jx_d(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
+    ALLOCATE(jy_d(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
+    ALLOCATE(jz_d(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
+
     ! Setup the particle lists
 
     next_species => species_list

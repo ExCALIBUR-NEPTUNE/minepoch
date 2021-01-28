@@ -167,12 +167,16 @@ MODULE shared_data
   ! Object representing a particle
   ! If you add or remove from this section then you *must* update the
   ! particle pack and unpack routines
+  INTEGER, PARAMETER :: work_ndims=4 ! Ideally this would be per-species based.
+  !As long as particle_list knows what species it contains, should be able to use a factory-type method.
+  !this is needed wherever a particle is allocated.
   TYPE particle
     REAL(num), DIMENSION(3) :: part_p
     REAL(num), DIMENSION(c_ndims) :: part_pos
     REAL(num) :: weight
     REAL(num) :: charge
     REAL(num) :: mass
+    REAL(num), DIMENSION(work_ndims) :: work
     TYPE(particle), POINTER :: next, prev
   END TYPE particle
 
@@ -245,6 +249,8 @@ MODULE shared_data
   INTEGER(i8) :: npart_global
   INTEGER :: nsteps, n_species = -1
   REAL(num), ALLOCATABLE, DIMENSION(:,:,:) :: ex, ey, ez, bx, by, bz, jx, jy, jz
+  REAL(num), ALLOCATABLE, DIMENSION(:,:,:) :: ex_back, ey_back, ez_back, bx_back, by_back, bz_back
+  REAL(num), ALLOCATABLE, DIMENSION(:,:,:) :: jx_d, jy_d, jz_d !Store drift currents separately
   REAL(r4), ALLOCATABLE, DIMENSION(:,:,:) :: r4array
 
   REAL(num), ALLOCATABLE, DIMENSION(:,:) :: ex_x_min, ex_x_max
@@ -301,7 +307,7 @@ MODULE shared_data
   LOGICAL :: simplify_deck
   INTEGER, DIMENSION(2*c_ndims) :: bc_field, bc_particle
   INTEGER :: step
-
+  LOGICAL :: drift_kinetic_species_exist = .FALSE.
   !----------------------------------------------------------------------------
   ! MPI data
   !----------------------------------------------------------------------------

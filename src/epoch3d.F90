@@ -137,6 +137,16 @@ PROGRAM pic
     time = time - dt / 2.0_num
 
     CALL update_eb_fields_final
+    ! At this point, do the second substep of the push if there are any drift-kinetic particles
+    IF (drift_kinetic_species_exist) THEN
+       IF (push) THEN
+          CALL push_particles_2ndstep
+       END IF
+       !Rewind the fields half a step
+       CALL rewind_fields_halfstep
+       !Then update using corrected current.
+       CALL update_eb_fields_final      
+    END IF
     time = time + dt
 
     ! This section ensures that the particle count for the species_list

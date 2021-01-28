@@ -16,6 +16,33 @@ TYPE fields_eval_tmps
     REAL(num) :: idx, idy, idz
 CONTAINS
 
+  SUBROUTINE push_particles_2ndstep
+    TYPE(particle_species), POINTER :: species, next_species
+    INTEGER :: ispecies
+
+    !Revert current back to half-step values.
+    jx = jx - jx_d
+    jy = jy - jy_d
+    jz = jz - jz_d   
+
+    next_species => species_list
+    DO ispecies = 1, n_species
+       species => next_species
+       next_species => species%next
+
+       IF (species%immobile) CYCLE
+
+       IF (species%is_driftkinetic) THEN
+          CALL push_particles_dk1(species)
+       END IF
+
+    ENDDO
+
+    CALL current_bcs
+    CALL particle_bcs
+
+  END SUBROUTINE push_particles_2ndstep
+
 
   SUBROUTINE push_particles
 
@@ -92,7 +119,6 @@ CONTAINS
     ! Particle weighting multiplication factor
     REAL(num) :: cf2
     REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
-    REAL(num), DIMENSION(3,3) :: Btens ! Btens(i,j) derivative of j_th component of B field along i direction.
 
     TYPE(particle), POINTER :: current, next
     TYPE(particle_species), POINTER :: species, next_species
@@ -100,6 +126,10 @@ CONTAINS
     jx = 0.0_num
     jy = 0.0_num
     jz = 0.0_num
+
+    jx_d = 0.0_num
+    jy_d = 0.0_num
+    jz_d = 0.0_num
 
     gx = 0.0_num
     gy = 0.0_num
@@ -128,9 +158,9 @@ CONTAINS
        IF (species%immobile) CYCLE
 
        IF (species%is_driftkinetic) THEN
-          CALL push_particles_dk
+          CALL push_particles_dk0(species)
        ELSE
-          CALL push_particles_lorentz
+          CALL push_particles_lorentz_split
        END IF
 
     ENDDO
@@ -485,54 +515,56 @@ CONTAINS
          !Current deposition uses position at t+0.5dt and t+1.5dt, particle
          !assumed to travel in direct line between these locations. Second order 
          !in time for evaluation of current at t+dt 
-         CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_q))
+         CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_q),.false.)
 
          current => next
       ENDDO
 
     END SUBROUTINE push_particles_lorentz_split
 
-    SUBROUTINE push_particles_dk
-      REAL(num), DIMENSION(3) :: dRdt, pos_0, pos_h, dRdt_1
+  END SUBROUTINE push_particles
+
+    !Drift-kinetic push. Because we can't do leapfrog, do an explicit two-step scheme.
+    ! -first substep is just Euler.
+    ! -particles stored at half-timestep to make current update easier.
+  SUBROUTINE push_particles_dk0(species)
+      TYPE(fields_eval_tmps) :: st_0
+      TYPE(particle_species), INTENT(INOUT) :: species
+      TYPE(particle), POINTER :: current, next
+      REAL(num), DIMENSION(3) :: dRdt, pos_0, pos_h
       REAL(num), DIMENSION(3) :: bdir, drifts_mu, drifts_vpll
       REAL(num), DIMENSION(3) :: drifts_ExB
       REAL(num), DIMENSION(3) :: Evec, Bvec
+      REAL(num), DIMENSION(3,3):: Btens
+
       REAL(num) :: part_mu, part_u, bdotBmag
-      REAL(num) :: part_u_0,part_u_h, dudt, dudt_1
+      REAL(num) :: part_u_0,part_u_h, dudt
+      REAL(num) :: part_q, part_weight
+      INTEGER(i8) :: ipart
+
+
       current => species%attached_list%head
 
       IF (.NOT. particles_uniformly_distributed) THEN
          part_weight = species%weight
-         fcx = idtyz * part_weight
-         fcy = idtxz * part_weight
-         fcz = idtxy * part_weight
       ENDIF
 
       !DEC$ VECTOR ALWAYS
       DO ipart = 1, species%attached_list%count
          next => current%next
+         IF (particles_uniformly_distributed) THEN
+            part_weight = current%weight
+         ENDIF
 
          part_q   = current%charge
          ! Do nonrelativistic drift-kinetics for the moment.
          part_u   = current%part_p(1)
          part_mu  = current%part_p(2)
- 
-         IF (current%part_p(3)<0.5_num) THEN
-            write (18,*) ipart,current%part_pos(1),current%part_pos(2),current%part_pos(3),part_u,part_mu,current%part_p(3)
-         END IF
-         !stop
 
-         CALL get_fields_at_point(current%part_pos,Bvec,Evec,Btens)
+         CALL get_fields_at_point_store(current%part_pos,Bvec,Evec,st_0,Btens)
          CALL get_drifts(current%part_pos,Evec,Bvec,Btens,drifts_ExB,bdir, &
               &  drifts_mu,drifts_vpll, bdotBmag)
-         ! Ignore B_perp would also make things easier. Can we do Esirkepov based on guiding centre? (dont see why not)
-         ! Probably want to do electrostatic somehow: couple DK particles to ES field only?
-         ! Otherwise, need full current description. Curl of shape function for magnetisation current?
-         !IF (current%part_p(3)<0.5_num) THEN
-         !   write (19,*) bdir(1),bdir(2),bdir(3),(part_mu * bdotBmag / current%mass)
-         !END IF
-         !dRdt = bdir * part_u &
-         !     & + drifts_ExB + drifts_mu*part_mu + drifts_vpll*part_u
+
          dRdt = bdir * part_u
          dudt = - (part_mu * bdotBmag / current%mass) 
          ! Move particles to half timestep position to first order
@@ -542,8 +574,63 @@ CONTAINS
          !Half step position.
          pos_h = 0.5*(current%part_pos + pos_0)
          part_u_h = 0.5*(part_u + part_u_0)
+         current%work(1:3)  = pos_h
+         current%work(4)    = part_u_h
 
-         CALL get_fields_at_point(pos_h,Bvec,Evec,Btens)
+         !Do current deposition using lowest order current. (current at t_{N+1})
+         !Before we apply this current, E+B need to be stored in a temporary;
+         !this is the lowest order current.
+         CALL current_deposition_store(st_0,pos_0,(part_weight*part_q),.true.)
+         
+         current => next
+      ENDDO
+      
+    END SUBROUTINE push_particles_dk0
+
+    !Drift-kinetic push. Because we can't do leapfrog, do an explicit two-step scheme.
+    !second substep: evaluate derivatives at t+dt using next-step fields.
+    SUBROUTINE push_particles_dk1(species)
+      TYPE(fields_eval_tmps) :: st_half
+      TYPE(particle_species), INTENT(INOUT) :: species
+      TYPE(particle), POINTER :: current, next
+      REAL(num), DIMENSION(3) :: pos_0, pos_h, dRdt_1
+      REAL(num), DIMENSION(3) :: bdir, drifts_mu, drifts_vpll
+      REAL(num), DIMENSION(3) :: drifts_ExB
+      REAL(num), DIMENSION(3) :: Evec, Bvec
+      REAL(num), DIMENSION(3,3):: Btens
+
+      REAL(num) :: part_mu, part_u, bdotBmag
+      REAL(num) :: part_u_h, dudt_1
+      REAL(num) :: part_q, part_weight
+      INTEGER(i8) :: ipart
+
+      current => species%attached_list%head
+
+      IF (.NOT. particles_uniformly_distributed) THEN
+         part_weight = species%weight
+      ENDIF
+
+      !DEC$ VECTOR ALWAYS
+      DO ipart = 1, species%attached_list%count
+         next => current%next
+         IF (particles_uniformly_distributed) THEN
+            part_weight = current%weight
+         ENDIF
+
+         part_q   = current%charge
+         ! Do nonrelativistic drift-kinetics for the moment.
+         part_u   = current%part_p(1)
+         part_mu  = current%part_p(2)
+ 
+         !Half step position.
+         pos_h = current%work(1:3)
+         part_u_h = current%work(4)
+
+         pos_0 = current%part_pos
+         ! From this point on: need to advance fields half a step in time: we could do this 
+         ! using the PIC particle currents + estimated drift currents:
+
+         CALL get_fields_at_point_store(pos_h,Bvec,Evec,st_half,Btens)
          CALL get_drifts(pos_h,Evec,Bvec,Btens,drifts_ExB,bdir, &
               &  drifts_mu,drifts_vpll, bdotBmag)
          dRdt_1 = bdir * part_u_h
@@ -555,12 +642,14 @@ CONTAINS
          current%part_pos = current%part_pos + dRdt_1 * dt 
          current%part_p(1:2)   = (/ part_u, part_mu /)
 
+         !This is the current between step N+1/2 and N+3/2 so 2nd order at N+1
+         CALL current_deposition(pos_0,current%part_pos,(part_weight*part_q),.true.)
+
          current => next
       ENDDO
 
-    END SUBROUTINE push_particles_dk
+    END SUBROUTINE push_particles_dk1
 
-  END SUBROUTINE push_particles
 
   SUBROUTINE get_drifts(pos,Evec,Bvec,Btens,ExB,bdir,drifts_mu,drifts_vpll,bdir_dotgradBmag)    
     REAL(num), DIMENSION(3), INTENT(INOUT) :: pos, ExB, Evec, Bvec
@@ -693,21 +782,24 @@ CONTAINS
 
   !Do current deposition of particle moving along straight line
   !from pos0 to pos1, with chargeweight = weight*charge
-  SUBROUTINE current_deposition(pos0,pos1,chargeweight)
+  SUBROUTINE current_deposition(pos0,pos1,chargeweight,drift_switch)
     REAL(num), DIMENSION(3), INTENT(INOUT) :: pos0,pos1
     REAL(num), INTENT(IN) :: chargeweight
+    LOGICAL, INTENT(IN) :: drift_switch
+    
     TYPE(fields_eval_tmps)  :: st0
 
     CALL calc_stdata(pos0,st0)
-    CALL current_deposition_store(st0,pos1,chargeweight)
+    CALL current_deposition_store(st0,pos1,chargeweight,drift_switch)
   END SUBROUTINE current_deposition
 
   !Do current deposition, reusing some precalculated data (in st)
   !Particle has moved from pos0 (data stored in st) to pos
-  SUBROUTINE current_deposition_store(st,pos,chargeweight)
+  SUBROUTINE current_deposition_store(st,pos,chargeweight,drift_switch)
     REAL(num), DIMENSION(3), INTENT(INOUT) :: pos
     TYPE(fields_eval_tmps), INTENT(INOUT)  :: st
     REAL(num), INTENT(IN) :: chargeweight
+    LOGICAL, INTENT(IN) :: drift_switch
 
     REAL(num) :: cell_x_r, cell_y_r, cell_z_r
     REAL(num) :: part_x, part_y, part_z
@@ -828,10 +920,15 @@ CONTAINS
              jxh = jxh - fjx * wx
              jyh(ix) = jyh(ix) - fjy * wy
              jzh(ix, iy) = jzh(ix, iy) - fjz * wz
-             
-             jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
-             jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
-             jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)
+             if (drift_switch) then
+                jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
+                jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
+                jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)
+             else 
+                jx_d(cx, cy, cz) = jx_d(cx, cy, cz) + jxh
+                jy_d(cx, cy, cz) = jy_d(cx, cy, cz) + jyh(ix)
+                jz_d(cx, cy, cz) = jz_d(cx, cy, cz) + jzh(ix, iy)
+             end if
           ENDDO
        ENDDO
     ENDDO

@@ -24,7 +24,7 @@ CONTAINS
     nvar = 3 + c_ndims
     nvar = nvar+1
     nvar = nvar+2
-
+    nvar = nvar+work_ndims
   END SUBROUTINE setup_partlists
 
 
@@ -320,6 +320,10 @@ CONTAINS
     array(cpos) = a_particle%charge
     array(cpos+1) = a_particle%mass
     cpos = cpos+2
+    IF(work_ndims>0) THEN
+       array(cpos:cpos+work_ndims-1) = a_particle%work 
+       cpos = cpos+work_ndims
+    END IF
 
   END SUBROUTINE pack_particle
 
@@ -341,7 +345,10 @@ CONTAINS
     a_particle%charge = array(cpos)
     a_particle%mass = array(cpos+1)
     cpos = cpos+2
-
+    IF(work_ndims>0) THEN
+       a_particle%work = array(cpos:cpos+work_ndims-1)    
+       cpos = cpos+work_ndims
+    END IF
   END SUBROUTINE unpack_particle
 
 

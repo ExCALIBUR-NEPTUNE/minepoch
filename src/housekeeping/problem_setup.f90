@@ -89,7 +89,7 @@ CONTAINS
     bx = 0.0_num
     by = 0.0_num
     bz = 0.0_num
-    IF (.false.) THEN
+    IF (.true.) THEN
        fixed_fields = .TRUE.
        bx = 1.0_num
        ey = 1.0_num

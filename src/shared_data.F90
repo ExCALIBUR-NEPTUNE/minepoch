@@ -31,6 +31,9 @@ MODULE constants
 #endif
   INTEGER, PARAMETER :: nio_units = SIZE(io_units)
 
+  ! Produce time history
+  LOGICAL, PARAMETER :: write_time_history = .TRUE.
+
   ! Boundary type codes
   INTEGER, PARAMETER :: c_bc_periodic = 1
   INTEGER, PARAMETER :: c_bc_other = 2

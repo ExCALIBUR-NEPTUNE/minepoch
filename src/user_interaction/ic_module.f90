@@ -31,33 +31,41 @@ CONTAINS
   SUBROUTINE two_stream_setup(deck_state)
 
     INTEGER, INTENT(IN) :: deck_state
-    REAL(num), PARAMETER :: drift_p = 2.5e-24_num
-    REAL(num), PARAMETER :: temp = 273.0_num
-    REAL(num), PARAMETER :: dens_max = 10.0_num
-    REAL(num), PARAMETER :: dens_scale = 2.0e9_num
-    REAL(num) :: xc, yc, zc, dens
-    INTEGER :: ix, iy, iz
+    REAL(num), PARAMETER :: v_drift = 0.2_num * c
+    REAL(num), PARAMETER :: v_therm = 0.01_num * c
+    REAL(num), PARAMETER :: v_pert = 0.1_num * v_therm
+    REAL(num), PARAMETER :: n0 = 8e11
+    INTEGER, PARAMETER :: ppc = 16
+    REAL(num) :: gamma_drift, temp_x, omega
+    INTEGER :: ix
     TYPE(particle_species), POINTER :: current_species
+
+    ! Plasma frequency
+    omega = SQRT(n0 * q0 * q0 / epsilon0 / m0)
 
     ! Control
 
     nx_global = 64
-    ny_global = 64
-    nz_global = 64
+    ny_global = 4
+    nz_global = 4
     x_min = 0.0_num
-    x_max = 5.0e5_num
+    x_max = 2.0_num * pi
     y_min = x_min
-    y_max = x_max
+    ! Could do (x_max * ny_global) / nx_global, but be wary of compilers
+    ! which don't obey precedence implied by parentheses by default
+    ! (e.g. Intel)
+    y_max = x_max * REAL(ny_global, num) / REAL(nx_global, num)
     z_min = x_min
-    z_max = x_max
-    t_end = 0.07_num
-    !t_end = 0.25_num
-    !t_end = 0.48_num
-    !t_end = 0.074_num
-    !t_end = 0.165_num
-    !t_end = 0.19_num
+    z_max = x_max * REAL(nz_global, num) / REAL(nx_global, num)
+    t_end = 30.0_num / omega
     stdout_frequency = 10
 
+    ! Calculate gamma_drift
+    ! Strictly should be function of x, but vpert << vdrift
+    gamma_drift = 1.0_num / SQRT(1.0_num - (v_drift / c)**2)
+
+    ! Calculate (1 DoF) temperature
+    temp_x = v_therm**2 * m0 / kb
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     ! Species
@@ -73,34 +81,21 @@ CONTAINS
     current_species%charge = -1.0_num * q0
 
     ! npart_per_cell
-    current_species%npart_per_cell = 4
+    current_species%npart_per_cell = ppc
 
     IF (deck_state /= c_ds_first) THEN
       ! density
-      IF (particles_uniformly_distributed) THEN
-        current_species%density = dens_max
-      ELSE
-        DO iz = 1-ng, nz+ng
-          zc = (z(iz) - 0.5_num*z_max)**2
-        
-          DO iy = 1-ng, ny+ng
-            yc = (y(iy) - 0.5_num*y_max)**2
-          
-            DO ix = 1-ng, nx+ng
-              xc = (x(ix) - 0.75_num*x_max)**2
-                        
-              dens = dens_max*EXP(-(xc + yc + zc)/dens_scale)
-              current_species%density(ix,iy,iz) = dens
-            ENDDO
-          ENDDO
-        ENDDO
-      ENDIF
+      current_species%density = n0
 
       ! drift_x
-      current_species%drift(:,:,:,1) = drift_p
+      ! Add on perturbation to seed instability
+      DO ix = 1-ng, nx+ng
+        current_species%drift(ix,:,:,1) = gamma_drift * m0 &
+            * (v_drift + v_pert * SIN(3.0_num * x(ix)))
+      END DO
 
       ! temp_x
-      current_species%temp(:,:,:,1) = temp
+      current_species%temp(:,:,:,1) = temp_x
     ENDIF
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -116,34 +111,21 @@ CONTAINS
     current_species%charge = -1.0_num * q0
 
     ! npart_per_cell
-    current_species%npart_per_cell = 4
+    current_species%npart_per_cell = ppc
 
     IF (deck_state /= c_ds_first) THEN
       ! density
-      IF (particles_uniformly_distributed) THEN
-        current_species%density = dens_max
-      ELSE
-        DO iz = 1-ng, nz+ng
-          zc = (z(iz) - 0.5_num*z_max)**2
-        
-          DO iy = 1-ng, ny+ng
-            yc = (y(iy) - 0.5_num*y_max)**2
-          
-            DO ix = 1-ng, nx+ng
-              xc = (x(ix) - 0.25_num*x_max)**2
-                        
-              dens = dens_max*EXP(-(xc + yc + zc)/dens_scale)
-              current_species%density(ix,iy,iz) = dens
-            ENDDO
-          ENDDO
-        ENDDO
-      ENDIF
+      current_species%density = n0
 
       ! drift_x
-      current_species%drift(:,:,:,1) = -drift_p
+      ! Add on perturbation to seed instability
+      DO ix = 1-ng, nx+ng
+        current_species%drift(ix,:,:,1) = gamma_drift * m0 &
+            * (-v_drift + v_pert * SIN(3.0_num * x(ix)))
+      END DO
 
       ! temp_x
-      current_species%temp(:,:,:,1) = temp
+      current_species%temp(:,:,:,1) = temp_x
     ENDIF
 
   END SUBROUTINE two_stream_setup

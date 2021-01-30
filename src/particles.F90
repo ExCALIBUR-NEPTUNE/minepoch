@@ -561,6 +561,10 @@ CONTAINS
          part_u   = current%part_p(1)
          part_mu  = current%part_p(2)
 
+         IF (current%part_p(3)<0.5_num) THEN
+            write (18,*) ipart,current%part_pos(1),current%part_pos(2),current%part_pos(3),part_u,part_mu,current%part_p(3)
+         END IF
+
          CALL get_fields_at_point_store(current%part_pos,Bvec,Evec,st_0,Btens)
          CALL get_drifts(current%part_pos,Evec,Bvec,Btens,drifts_ExB,bdir, &
               &  drifts_mu,drifts_vpll, bdotBmag)

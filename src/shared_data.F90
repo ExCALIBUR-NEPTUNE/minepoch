@@ -169,7 +169,7 @@ MODULE shared_data
   ! particle pack and unpack routines
   INTEGER, PARAMETER :: work_ndims=4 ! Ideally this would be per-species based.
   !As long as particle_list knows what species it contains, should be able to use a factory-type method.
-  !this is needed wherever a particle is allocated.
+  !size of particle is needed wherever a particle is allocated.
   TYPE particle
     REAL(num), DIMENSION(3) :: part_p
     REAL(num), DIMENSION(c_ndims) :: part_pos

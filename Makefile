@@ -130,7 +130,6 @@ ifeq ($(strip $(COMPILER)),archer)
 endif
 
 FFLAGS += $(MODULEFLAG)
-LDFLAGS = $(FFLAGS)
 
 # Set some of the build parameters
 TARGET = epoch3d
@@ -173,7 +172,7 @@ ifneq (,$(findstring TRILINOS,$(DEFINES)))
   INCLUDE = $(Trilinos_INCLUDE_DIRS) $(Trilinos_TPL_INCLUDE_DIRS)
   LIBDIR = $(Trilinos_LIBRARY_DIRS) $(Trilinos_TPL_LIBRARY_DIRS)
   LIB = $(Trilinos_LIBRARIES) $(Trilinos_TPL_LIBRARIES)
-  LDFLAGS += $(LIBDIR) $(LIB) $(Trilinos_EXTRA_LD_FLAGS)
+  LDFLAGS = $(LIBDIR) $(LIB) $(Trilinos_EXTRA_LD_FLAGS)
   CXX = $(Trilinos_CXX_COMPILER)
   # Check for clang. If so use CXX as linker
   CLANG := $(shell $(CXX) --version | grep 'clang')
@@ -187,6 +186,7 @@ endif
 # Use FC for LD unless specified otherwise
 ifeq ($(origin LD),default)
   LD = $(FC)
+  LDFLAGS += $(FFLAGS)
 endif
 
 # --------------------------------------------------

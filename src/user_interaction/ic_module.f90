@@ -40,25 +40,54 @@ CONTAINS
     INTEGER :: ix
     TYPE(particle_species), POINTER :: current_species
 
-    ! Plasma frequency
-    omega = SQRT(n0 * q0 * q0 / epsilon0 / m0)
+    IF (deck_state == c_ds_first) THEN
+      ! Set control variables here
+      nx_global = 64
+      ny_global = 4
+      nz_global = 4
+      x_min = 0.0_num
+      x_max = 2.0_num * pi
+      y_min = x_min
+      ! Could do (x_max * ny_global) / nx_global, but be wary of compilers
+      ! which don't obey precedence implied by parentheses by default
+      ! (e.g. Intel)
+      y_max = x_max * REAL(ny_global, num) / REAL(nx_global, num)
+      z_min = x_min
+      z_max = x_max * REAL(nz_global, num) / REAL(nx_global, num)
 
-    ! Control
+      ! Plasma frequency
+      omega = SQRT(n0 * q0 * q0 / epsilon0 / m0)
+      t_end = 30.0_num / omega
+      stdout_frequency = 10
 
-    nx_global = 64
-    ny_global = 4
-    nz_global = 4
-    x_min = 0.0_num
-    x_max = 2.0_num * pi
-    y_min = x_min
-    ! Could do (x_max * ny_global) / nx_global, but be wary of compilers
-    ! which don't obey precedence implied by parentheses by default
-    ! (e.g. Intel)
-    y_max = x_max * REAL(ny_global, num) / REAL(nx_global, num)
-    z_min = x_min
-    z_max = x_max * REAL(nz_global, num) / REAL(nx_global, num)
-    t_end = 30.0_num / omega
-    stdout_frequency = 10
+      ! Need to set-up species here
+      NULLIFY(current_species)
+      CALL setup_species(current_species, 'Right')
+
+      ! mass -- MANDATORY
+      current_species%mass = 1.0_num * m0
+
+      ! charge -- MANDATORY
+      current_species%charge = -1.0_num * q0
+
+      ! npart_per_cell
+      current_species%npart_per_cell = ppc
+
+      ! MANDATORY
+      NULLIFY(current_species)
+      CALL setup_species(current_species, 'Left')
+
+      ! mass -- MANDATORY
+      current_species%mass = 1.0_num * m0
+
+      ! charge -- MANDATORY
+      current_species%charge = -1.0_num * q0
+
+      ! npart_per_cell
+      current_species%npart_per_cell = ppc
+
+      RETURN
+    END IF
 
     ! Calculate gamma_drift
     ! Strictly should be function of x, but vpert << vdrift
@@ -66,37 +95,27 @@ CONTAINS
 
     ! Calculate (1 DoF) temperature
     temp_x = v_therm**2 * m0 / kb
+
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     ! Species
 
-    ! MANDATORY
+    ! MANDATORY (Is the NULLIFY mandatory?)
     NULLIFY(current_species)
     CALL setup_species(current_species, 'Right')
 
-    ! mass -- MANDATORY
-    current_species%mass = 1.0_num * m0
+    ! density
+    current_species%density = n0
 
-    ! charge -- MANDATORY
-    current_species%charge = -1.0_num * q0
+    ! drift_x
+    ! Add on perturbation to seed instability
+    DO ix = 1-ng, nx+ng
+      current_species%drift(ix,:,:,1) = gamma_drift * m0 &
+          * (v_drift + v_pert * SIN(3.0_num * x(ix)))
+    END DO
 
-    ! npart_per_cell
-    current_species%npart_per_cell = ppc
-
-    IF (deck_state /= c_ds_first) THEN
-      ! density
-      current_species%density = n0
-
-      ! drift_x
-      ! Add on perturbation to seed instability
-      DO ix = 1-ng, nx+ng
-        current_species%drift(ix,:,:,1) = gamma_drift * m0 &
-            * (v_drift + v_pert * SIN(3.0_num * x(ix)))
-      END DO
-
-      ! temp_x
-      current_species%temp(:,:,:,1) = temp_x
-    ENDIF
+    ! temp_x
+    current_species%temp(:,:,:,1) = temp_x
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -104,29 +123,18 @@ CONTAINS
     NULLIFY(current_species)
     CALL setup_species(current_species, 'Left')
 
-    ! mass -- MANDATORY
-    current_species%mass = 1.0_num * m0
+    ! density
+    current_species%density = n0
 
-    ! charge -- MANDATORY
-    current_species%charge = -1.0_num * q0
+    ! drift_x
+    ! Add on perturbation to seed instability
+    DO ix = 1-ng, nx+ng
+      current_species%drift(ix,:,:,1) = gamma_drift * m0 &
+          * (-v_drift + v_pert * SIN(3.0_num * x(ix)))
+    END DO
 
-    ! npart_per_cell
-    current_species%npart_per_cell = ppc
-
-    IF (deck_state /= c_ds_first) THEN
-      ! density
-      current_species%density = n0
-
-      ! drift_x
-      ! Add on perturbation to seed instability
-      DO ix = 1-ng, nx+ng
-        current_species%drift(ix,:,:,1) = gamma_drift * m0 &
-            * (-v_drift + v_pert * SIN(3.0_num * x(ix)))
-      END DO
-
-      ! temp_x
-      current_species%temp(:,:,:,1) = temp_x
-    ENDIF
+    ! temp_x
+    current_species%temp(:,:,:,1) = temp_x
 
   END SUBROUTINE two_stream_setup
 

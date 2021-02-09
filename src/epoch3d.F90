@@ -107,8 +107,12 @@ PROGRAM pic
     CALL particle_bcs
     CALL efield_bcs(ex, ey, ez, ng)
     CALL bfield_final_bcs(bx, by, bz, ng)
+#ifdef TRILINOS
   ELSE
+    ! TODO: This fails silently if explicit_pic = .FALSE.
+    ! but Trilinos not enabled at compile time
     CALL init_trilinos(local_elements, linear_index, comm)
+#endif
   END IF
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'
@@ -204,9 +208,11 @@ PROGRAM pic
     WRITE(*,*) 'Final runtime of core = ' // TRIM(timestring)
   ENDIF
 
+#ifdef TRILINOS
   IF (.NOT. explicit_pic) THEN
     CALL end_trilinos
   END IF
+#endif
 
   CALL finalise
 

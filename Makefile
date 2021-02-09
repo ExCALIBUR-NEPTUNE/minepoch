@@ -174,6 +174,7 @@ ifneq (,$(findstring TRILINOS,$(DEFINES)))
   LIB = $(Trilinos_LIBRARIES) $(Trilinos_TPL_LIBRARIES)
   LDFLAGS = $(LIBDIR) $(LIB) $(Trilinos_EXTRA_LD_FLAGS)
   CXX = $(Trilinos_CXX_COMPILER)
+  CXXFLAGS = $(Trilinos_CXX_COMPILER_FLAGS)
   # Check for clang. If so use CXX as linker
   CLANG := $(shell $(CXX) --version | grep 'clang')
   ifneq ($(CLANG),)
@@ -255,7 +256,7 @@ $(SRCDIR)/COMMIT: FORCE
 	$(FC) -c $(FFLAGS) -o $(OBJDIR)/$@ $(PREPROFLAGS) $<
 
 %.o: %.cpp
-	$(CXX) -c $(CFLAGS) $(Trilinos_INCLUDE_DIRS) $(Trilinos_TPL_INCLUDE_DIRS) -o $(OBJDIR)/$@ $<
+	$(CXX) -c $(CXXFLAGS) $(Trilinos_INCLUDE_DIRS) $(Trilinos_TPL_INCLUDE_DIRS) -o $(OBJDIR)/$@ $<
 
 main: $(FULLTARGET)
 $(FULLTARGET): $(OBJFILES)

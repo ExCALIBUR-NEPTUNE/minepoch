@@ -72,6 +72,7 @@ MODULE constants
   INTEGER, PARAMETER :: c_err_generic_warning = 2**12
   INTEGER, PARAMETER :: c_err_generic_error = 2**13
   INTEGER, PARAMETER :: c_err_io = 2**14
+  INTEGER, PARAMETER :: c_err_setup = 2**15
 
   INTEGER, PARAMETER :: c_ds_first = 1
   INTEGER, PARAMETER :: c_ds_last = 2

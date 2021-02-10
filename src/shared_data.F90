@@ -125,7 +125,9 @@ MODULE constants
   INTEGER, PARAMETER :: c_stagger_max = c_stagger_ex + c_stagger_bx
 
   ! Length of a standard string
+  ! TODO Why so many different values here?
   INTEGER, PARAMETER :: string_length = 256
+  INTEGER, PARAMETER :: c_max_string_length = 64
   INTEGER, PARAMETER :: c_id_length = 32
 
 END MODULE constants
@@ -147,6 +149,11 @@ MODULE shared_data
     CHARACTER(string_length) :: value
   END TYPE string_type
   CHARACTER(LEN=string_length) :: extended_error_string
+
+  !----------------------------------------------------------------------------
+  ! Choice of problem set-up
+  !----------------------------------------------------------------------------
+  CHARACTER(LEN=c_max_string_length) :: problem
 
   !----------------------------------------------------------------------------
   ! Particles
@@ -273,7 +280,6 @@ MODULE shared_data
 
   INTEGER, PARAMETER :: data_dir_max_length = 64
   CHARACTER(LEN=data_dir_max_length) :: data_dir
-  INTEGER, PARAMETER :: c_max_string_length = 64
 
   LOGICAL :: use_random_seed = .FALSE.
 

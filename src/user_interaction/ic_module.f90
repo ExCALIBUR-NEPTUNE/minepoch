@@ -18,11 +18,18 @@ CONTAINS
 
 
 
-  SUBROUTINE custom_problem_setup(deck_state)
+  SUBROUTINE custom_problem_setup(deck_state, problem)
 
     INTEGER, INTENT(IN) :: deck_state
+    CHARACTER(LEN=c_max_string_length), INTENT(IN) :: problem
+    INTEGER, PARAMETER :: setuperrcode = 405
 
-    CALL two_stream_setup(deck_state)
+    IF (str_cmp(problem, 'two_stream')) THEN
+      CALL two_stream_setup(deck_state)
+    ELSE
+      PRINT*, 'Unrecognised set-up: ', TRIM(problem)
+      CALL MPI_ABORT(MPI_COMM_WORLD, setuperrcode, errcode)
+    END IF
 
   END SUBROUTINE custom_problem_setup
 

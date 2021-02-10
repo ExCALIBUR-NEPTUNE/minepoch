@@ -243,8 +243,8 @@ calc_df.o: calc_df.F90 shared_data.o
 custom_laser.o: custom_laser.f90 shared_data.o
 diagnostics.o: diagnostics.F90 calc_df.o strings.o timer.o
 epoch3d.o: epoch3d.F90 balance.o diagnostics.o fields.o finish.o helper.o \
-  ic_module.o mpi_routines.o particles.o problem_setup.o setup.o welcome.o \
-  pat_mpi_lib_interface.o
+  ic_module.o mpi_routines.o particles.o problem_setup.o shared_data.o \
+  setup.o welcome.o pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
 helper.o: helper.F90 boundary.o partlist.o strings.o

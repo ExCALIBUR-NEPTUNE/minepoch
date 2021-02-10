@@ -99,6 +99,8 @@ CONTAINS
         IF (rank == 0) PRINT *, 'Error reading namelist'
         CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
       END IF
+
+      DEALLOCATE(lines)
     END IF
 
   END SUBROUTINE read_deck

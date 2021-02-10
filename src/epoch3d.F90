@@ -16,6 +16,7 @@ PROGRAM pic
   ! PSC written by Hartmut Ruhl
 
   USE balance
+  USE deck
   USE diagnostics
   USE fields
   USE helper
@@ -67,10 +68,10 @@ PROGRAM pic
   CALL MPI_BCAST(data_dir, 64, MPI_CHARACTER, 0, comm, errcode)
 
   ! Read deck here to tell which set-up
-  ! For now hard code to two_stream
-  problem = 'two_stream'
+  CALL read_deck
   CALL problem_setup(c_ds_first, problem)
-  ! Could now re-read to override default values
+  ! Now re-read to override default values
+  CALL read_deck
 
   CALL setup_particle_boundaries ! boundary.f90
   CALL mpi_initialise  ! mpi_routines.f90

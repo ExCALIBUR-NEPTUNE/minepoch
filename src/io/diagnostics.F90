@@ -1,6 +1,7 @@
 MODULE diagnostics
 
   USE calc_df
+  USE shared_data
   USE strings
   USE timer
 
@@ -151,7 +152,6 @@ CONTAINS
     INTEGER, PARAMETER :: fu = 67
     LOGICAL, PARAMETER :: do_flush = .TRUE.
     INTEGER, PARAMETER :: dump_frequency = 10
-    INTEGER, PARAMETER :: ioerrcode = 404
 
     full_filename = TRIM(data_dir) // '/output.dat'
 
@@ -162,7 +162,7 @@ CONTAINS
             iostat=errcode)
         IF (errcode /= 0) THEN
           PRINT*, 'Failed to open file: ', TRIM(full_filename)
-          CALL MPI_ABORT(MPI_COMM_WORLD, ioerrcode, errcode)
+          CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
         END IF
         WRITE(fu,'(''# '',a5,99a23)') 'step', 'time', 'dt', &
             'laser_injected', 'laser_absorbed', 'total_particle_energy', &

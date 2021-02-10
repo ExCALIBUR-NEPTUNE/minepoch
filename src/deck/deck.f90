@@ -9,6 +9,7 @@ CONTAINS
   SUBROUTINE read_deck
 
     INTEGER :: nlines, ierr
+    INTEGER :: errcode
     LOGICAL, SAVE :: first = .TRUE.
 
     NAMELIST/control/ problem
@@ -23,9 +24,9 @@ CONTAINS
 
         IF (ierr /= 0) THEN
           PRINT *, 'Failed to open file: ' // TRIM(data_dir) // '/input.deck'
-          CALL MPI_ABORT(MPI_COMM_WORLD, 404, errcode) 
+          CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
         END IF
-      END IF    
+      END IF
 
       first = .FALSE.
     ELSE

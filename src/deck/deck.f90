@@ -1,6 +1,8 @@
 MODULE deck
 
+  USE mpi
   USE shared_data
+  USE timer
 
   IMPLICIT NONE
 
@@ -13,7 +15,11 @@ CONTAINS
     LOGICAL, SAVE :: first = .TRUE.
     INTEGER, SAVE :: nlines = 0
 
-    NAMELIST/control/ problem
+    NAMELIST/control/ problem, x_min, x_max, y_min, y_max, &
+         nx_global, ny_global, nz_global, nprocx, nprocy, nprocz, &
+         allow_cpu_reduce, timer_collect, use_balance, use_random_seed, &
+         npart_global, nsteps, t_end, dt_multiplier, dlb_threshold, &
+         stdout_frequency, particle_push_start_time, n_species
 
     IF (first) THEN
       ! Set the default problem here

@@ -2,6 +2,7 @@ MODULE particles
 
   USE boundary
   USE partlist
+  USE deltaf_loader2, ONLY: params_local, params_local_all
 
   IMPLICIT NONE
 
@@ -14,6 +15,15 @@ TYPE fields_eval_tmps
 ! Some numerical factors needed for various particle-fields routines.  
     REAL(num) :: idtyz, idtxz, idtxy
     REAL(num) :: idx, idy, idz
+
+    
+    ! For now, fluid equations for a single species
+    ! density is mass density, p_fluid is momentum density
+    REAL(num), DIMENSION(:), ALLOCATABLE :: dens_fluid_next, forcet, dens_fluid
+    REAL(num), DIMENSION(:), ALLOCATABLE :: dens_fluid0, p_fluid0
+    REAL(num), DIMENSION(:), ALLOCATABLE :: p_fluid_next, p_fluid, pressuret
+    REAL(num) :: dt_fluid, dx_fluid
+    INTEGER :: nx_fluid
 CONTAINS
 
   SUBROUTINE push_particles_2ndstep
@@ -35,7 +45,7 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk1(species)
        END IF
-
+       
     ENDDO
 
     CALL current_bcs
@@ -167,7 +177,7 @@ CONTAINS
 
     CALL current_bcs
     CALL particle_bcs
-
+    
   contains
 
     SUBROUTINE push_particles_lorentz
@@ -427,7 +437,14 @@ CONTAINS
     SUBROUTINE push_particles_lorentz_split
       TYPE(fields_eval_tmps) :: st_half
       REAL(num), DIMENSION(3) :: part_pos_t1p5, pos_half, Bvec, Evec
+      REAL(num) :: weight_back
+      REAL(num), DIMENSION(3) :: force, part_v
 
+      p_fluid0    = 0.0
+      dens_fluid0 = 0.0
+      pressuret   = 0.0
+      forcet      = 0.0
+      
       current => species%attached_list%head
 
       IF (.NOT. particles_uniformly_distributed) THEN
@@ -507,6 +524,15 @@ CONTAINS
          current%part_pos = pos_half + (/delta_x, delta_y, delta_z/)
          current%part_p   = part_mc * (/ part_ux, part_uy, part_uz /)
 
+         ! Delta-f calcuation: subtract background from
+         ! calculated current.
+         IF(species%use_deltaf) THEN
+            weight_back = current%pvol * f0(species, current, current%mass)
+            fcx = idtyz * (part_weight - weight_back)
+            fcy = idtxz * (part_weight - weight_back)
+            fcz = idtxy * (part_weight - weight_back)
+         END IF
+            
          ! Now advance to t+1.5dt to calculate current. This is detailed in
          ! the manual between pages 37 and 41. The version coded up looks
          ! completely different to that in the manual, but is equivalent.
@@ -517,9 +543,19 @@ CONTAINS
          !in time for evaluation of current at t+dt 
          CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_q),.false.)
 
+         part_v = (/part_ux, part_uy,part_uz/)
+         force = part_q*(Evec+cross(part_v,Bvec))
+         weight_back=0.0
+         CALL assignweight_fluid(current%part_pos, &
+              & (part_weight-weight_back)*current%part_p(1), &
+              & (part_weight-weight_back)*current%mass,force )
+         
          current => next
       ENDDO
 
+      CALL fluideq_diag
+      CALL update_fluideq
+      
     END SUBROUTINE push_particles_lorentz_split
 
   END SUBROUTINE push_particles
@@ -585,6 +621,7 @@ CONTAINS
          !Before we apply this current, E+B need to be stored in a temporary;
          !this is the lowest order current.
          CALL current_deposition_store(st_0,pos_0,(part_weight*part_q),.true.)
+
          
          current => next
       ENDDO
@@ -1157,4 +1194,267 @@ CONTAINS
     STOP  
   END SUBROUTINE postsetup_testing
 
+  ! Background distribution function used for delta-f calculations.
+  ! Specialise to a drifting (tri)-Maxwellian to simplify and ensure
+  ! zero density/current divergence.
+  ! Can effectively switch off deltaf method by setting zero background density.
+
+  FUNCTION f0(species, current, mass)
+    TYPE(particle), POINTER, INTENT(IN) :: current
+    REAL(num), INTENT(IN) :: mass
+    REAL(num) :: f0
+    REAL(num) :: density, xsc
+    REAL(num) :: f0_exponent, norm, two_kb_mass, two_pi_kb_mass3
+    REAL(num), DIMENSION(3) :: tl, dl
+    TYPE(particle_species),  INTENT(INOUT) :: species
+    INTEGER :: i,ix,ix0
+    
+    IF (species%use_deltaf) THEN
+       two_kb_mass = 2.0_num * kb * mass
+       two_pi_kb_mass3 = (pi * two_kb_mass)**3
+       !DO i=1,3
+       !   CALL params_local(current, species%temp(:,:,:,i), &
+       !        & species%drift(:,:,:,i), tl(i), dl(i))
+       !END DO
+       CALL params_local_all(current, species%temp, &
+               & species%drift,species%density, tl, dl, density)
+
+       CALL fluid_quants(current%part_pos,density,dl)
+
+       ! Per-particle momentum
+       dl = current%mass*dl/density
+       density = density/current%mass
+       
+       !WRITE (*,*) current%part_p(1), dl(1)
+  !     f0_exponent = ((current%part_p(1) - dl(1))**2 / tl(1) &
+  !                  + (current%part_p(2) - dl(2))**2 / tl(2) &
+  !                  + (current%part_p(3) - dl(3))**2 / tl(3)) / two_kb_mass
+       !     norm = density / SQRT(two_pi_kb_mass3 * tl(1) * tl(2) * tl(3))
+       ! Single-temperature distribution.
+       f0_exponent = ((current%part_p(1) - dl(1))**2 / tl(1)) / two_kb_mass
+       norm = density / SQRT(two_pi_kb_mass3 * tl(1))
+       f0 = norm * EXP(-f0_exponent)
+    ELSE
+       f0 = 0.0_num
+    END IF
+
+  END FUNCTION f0
+
+  SUBROUTINE fluid_quants(r,density,mom)
+    REAL(num), DIMENSION(3), INTENT(IN)    :: r
+    REAL(num), DIMENSION(3), INTENT(INOUT) :: mom
+    REAL(num) :: density
+    INTEGER :: ix,ixp,ix0
+    REAL(num) :: x,cell_x,xsc
+    
+    x = r(1)
+    xsc = x/dx_fluid
+    ix0=floor(xsc)
+    ix =modulo(ix0-1,nx_fluid)+1
+    ixp = ix+1
+    ixp = modulo(ixp-1,nx_fluid)+1
+    cell_x = xsc - ix0
+
+    mom=0
+    density = (1-cell_x)*dens_fluid(ix) + cell_x*dens_fluid(ixp)
+    mom(1)  = (1-cell_x)*p_fluid(ix)    + cell_x*p_fluid(ixp)
+
+  END SUBROUTINE fluid_quants
+  
+  !Piecewise linear evaluation of density.
+  REAL(num) FUNCTION density_fluid(r)
+    REAL(num), DIMENSION(3) :: r
+
+    INTEGER :: ix,ixp
+    REAL(num) :: x,cell_x
+    x = r(1)
+    ix =floor(r(1)/dx_fluid)
+    ix =modulo(ix-1,nx_fluid)+1
+    ixp = ix+1
+    ixp = modulo(ixp-1,nx_fluid)+1
+    
+    cell_x = x - ix*dx_fluid
+
+    density_fluid = (1-cell_x)*dens_fluid(ix) + cell_x*dens_fluid(ixp)
+  END FUNCTION density_fluid
+
+  !Piecewise linear evaluation of density.
+  !px is the macroparticle momentum
+  !weight is the macroparticle mass
+  SUBROUTINE assignweight_fluid(r,px,weight,mforce)
+    REAL(num), DIMENSION(:), INTENT(INOUT) :: r,mforce
+    REAL(num), INTENT(IN)                  :: px,weight
+    
+    INTEGER :: ix,ixp,ix0
+    REAL(num) :: x,cell_x,weight_dV,xsc,dydz
+
+    dydz = (z_max-z_min)*(y_max-y_min)
+    
+    x = r(1)
+    xsc = x/dx_fluid
+    ix0=floor(xsc)
+    ix =modulo(ix0-1,nx_fluid)+1
+    ixp = ix+1
+    ixp = modulo(ixp-1,nx_fluid)+1
+    
+    cell_x = xsc - ix0
+
+    weight_dV = 1.0/(dx_fluid*dydz)
+    
+    dens_fluid0(ixp) = dens_fluid0(ixp)  + cell_x*weight*weight_dV
+    dens_fluid0(ix)  = dens_fluid0(ix) + (1.0_num-cell_x)*weight*weight_dV
+    !dens_fluid0(ix)  = dens_fluid0(ix) + weight_dx
+    
+    p_fluid0(ixp)= p_fluid0(ixp) + px*cell_x*weight_dV
+    p_fluid0(ix) = p_fluid0(ix)  + px*(1.0_num-cell_x)*weight_dV
+    !p_fluid0(ix) = p_fluid0(ix)  + px*weight_dx
+    
+    pressuret(ix) = pressuret(ix) + px*px*weight_dV
+    forcet(ix) = forcet(ix) + weight_dV*mforce(1)
+    
+  END SUBROUTINE assignweight_fluid
+
+  SUBROUTINE fluideq_diag
+    INTEGER :: ix
+    REAL(num) :: xg
+    DO ix=1,nx_fluid
+       xg = ix*dx_fluid
+       WRITE (25,*) time,xg,dens_fluid0(ix),p_fluid0(ix),dens_fluid(ix),p_fluid(ix)
+    END DO
+  END SUBROUTINE fluideq_diag
+
+  ! Solve a simple fluid equation for moment update.
+  ! -lowest order Conservative finite volume 
+  SUBROUTINE update_fluideq
+    INTEGER :: ix, lr, ip
+    REAL(num) :: flux(2), pflux(2), kterm
+
+    !Just solve free-streaming cold gas for now.
+    pressuret = 0.0
+    forcet = 0.0
+
+    DO ix=1,nx_fluid
+       DO lr=1,2
+          IF(p_fluid(ix)>0) THEN
+             ip = ix+lr-2
+          ELSE
+             ip = ix+lr-1
+          END IF
+          ip = MODULO(ip-1,nx_fluid)+1
+          flux(lr)  = p_fluid(ip)
+          pflux(lr) = p_fluid(ip)**2/dens_fluid(ip) + pressuret(ip)
+       END DO
+       dens_fluid_next(ix) = dens_fluid(ix) + (flux(1) - flux(2))*dt_fluid/dx_fluid
+       kterm = forcet(ix)
+       p_fluid_next(ix)    = p_fluid(ix) &
+            & + (pflux(1) - pflux(2))*dt_fluid/dx_fluid + kterm
+       !p_fluid_next(ix)    = p_fluid(ix)        
+    END DO
+    p_fluid = p_fluid_next
+    dens_fluid = dens_fluid_next
+  END SUBROUTINE update_fluideq
+
+  SUBROUTINE setup_fluid
+    
+    nx_fluid = nx
+    dx_fluid = dx
+    ALLOCATE(p_fluid(1:nx_fluid))
+    ALLOCATE(p_fluid0(1:nx_fluid))
+    ALLOCATE(dens_fluid(1:nx_fluid))
+    ALLOCATE(dens_fluid0(1:nx_fluid))
+    ALLOCATE(p_fluid_next(1:nx_fluid))
+    ALLOCATE(dens_fluid_next(1:nx_fluid))
+    ALLOCATE(forcet(1:nx_fluid))
+    ALLOCATE(pressuret(1:nx_fluid))
+    forcet = 0.0
+    pressuret = 0.0
+    dens_fluid = 0.0
+    dens_fluid0= 0.0
+    p_fluid_next = 0.0
+    p_fluid = 0.0
+    p_fluid0= 0.0
+    dens_fluid_next = 0.0
+    dt_fluid = dt
+
+    CALL load_fluid
+   
+  END SUBROUTINE setup_fluid
+    
+  SUBROUTINE load_fluid
+    REAL(num), DIMENSION(3) :: tl,dl,mforce
+    REAL(num) :: p,part_weight,dens, dydz, volfac, x_pos
+    REAL(num), DIMENSION(4) :: gaussp, gaussw
+    INTEGER :: ig,ix
+    TYPE(particle), POINTER :: first_part
+    TYPE(particle), POINTER :: dummy_part
+    ALLOCATE(dummy_part)
+    
+    gaussp = dx_fluid * (0.5 + 0.5 * (/-0.861136, -0.339981, 0.339981, 0.861136/) )
+    gaussw = dx_fluid * 0.5 * (/ 0.347855,  0.652145, 0.652145, 0.347855/)
+
+    dydz = (z_max-z_min)*(y_max-y_min)
+    volfac = dydz
+
+    ! Pick first species, and first particle from that: assumed 1-species case
+    ! and uniform mass, charge.
+    
+    first_part => species_list%attached_list%head
+  
+    do ix=1,nx
+       do ig = 1,4
+          x_pos = ix*dx_fluid + gaussp(ig)
+          dummy_part%part_pos = (/ x_pos, 0.0_num, 0.0_num /)
+          CALL params_local_all(dummy_part, species_list%temp, &
+               & species_list%drift, species_list%density, tl, dl, dens)
+          part_weight = first_part%mass*volfac*dens*gaussw(ig)
+          !Drift is momentum/c units per particle.
+          p = (dl(1))*volfac*dens*gaussw(ig)
+          mforce = (/ 0.0_num, 0.0_num, 0.0_num/)
+          CALL assignweight_fluid(dummy_part%part_pos,p,part_weight,mforce)
+          !WRITE (*,*) x_pos,ig,part_weight,dens,dl(1)
+       end do
+       !WRITE (*,*) ix,dens_fluid0(ix)
+    end do
+    dens_fluid = dens_fluid0
+    p_fluid = p_fluid0
+    
+    dens_fluid0= 0.0
+    p_fluid0= 0.0
+   
+  END SUBROUTINE load_fluid
+    
+    
+  SUBROUTINE solve_fluid
+    REAL(num) :: t, t_fin, vmax, xg
+    INTEGER   :: it, ix, nt_fluid
+
+    CALL setup_fluid
+    
+    vmax=1.0
+    DO ix=1,nx_fluid
+       xg = ix*dx_fluid
+       dens_fluid(ix) = 1.0_num !+ 0.3_num * cos(xg)
+       p_fluid(ix)    = 1.0_num + 0.3_num * cos(xg)
+       vmax = max(vmax,abs(p_fluid(ix)/dens_fluid(ix)))
+    END DO
+
+    !Courant?
+    dt_fluid = 0.5*dx_fluid/vmax
+
+    t_fin = 10.0_num
+    nt_fluid = FLOOR(t_fin/dt_fluid) + 1
+    nt_fluid = 400
+    
+    DO it = 1,nt_fluid
+       t = it*dt_fluid
+       DO ix=1,nx_fluid
+          xg = ix*dx_fluid
+          WRITE (25,*) t,xg,dens_fluid(ix),p_fluid(ix)
+       END DO
+       CALL update_fluideq
+    end do
+    
+    STOP
+  END SUBROUTINE SOLVE_FLUID
+  
 END MODULE particles

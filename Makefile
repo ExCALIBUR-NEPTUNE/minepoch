@@ -141,6 +141,14 @@ DEFINES := $(DEF)
 # The following are a list of pre-processor defines which can be added to
 # the above line modifying the code behaviour at compile time.
 
+# delta-f method
+DEFINES += $(D)DELTAF_METHOD
+#DEFINES += $(D)DELTAF_DEBUG
+
+# minEPOCH only works for BSPLINE3 but adding this include allow 
+# reuse of main EPOCH code without modification
+DEFINES += $(D)PARTICLE_SHAPE_BSPLINE3
+
 # Keep global particle counts up to date.
 #DEFINES += $(D)PARTICLE_COUNT_UPDATE
 
@@ -180,7 +188,7 @@ SRCFILES = balance.F90 boundary.f90 calc_df.F90 custom_laser.f90 \
   laser.f90 mpi_routines.F90 mpi_subtype_control.f90 particle_temperature.F90 \
   particles.F90 partlist.F90 problem_setup.f90 random_generator.f90 \
   redblack_module.f90 setup.F90 shared_data.F90 strings.f90 timer.f90 \
-  version_data.F90 welcome.F90
+  version_data.F90 welcome.F90 deltaf_loader.F90
 
 OBJFILES := $(SRCFILES:.f90=.o)
 OBJFILES := $(OBJFILES:.F90=.o)
@@ -247,14 +255,16 @@ epoch3d.o: epoch3d.F90 balance.o diagnostics.o fields.o finish.o helper.o \
   pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
-helper.o: helper.F90 boundary.o partlist.o strings.o particles.o
+helper.o: helper.F90 boundary.o partlist.o strings.o particles.o \
+	deltaf_loader.o
 ic_module.o: ic_module.f90 helper.o setup.o shared_data.o
 laser.o: laser.f90 custom_laser.o
 mpi_routines.o: mpi_routines.F90 helper.o
 mpi_subtype_control.o: mpi_subtype_control.f90 shared_data.o
 particle_temperature.o: particle_temperature.F90 random_generator.o \
   shared_data.o
-particles.o: particles.F90 boundary.o partlist.o
+particles.o: particles.F90 boundary.o partlist.o deltaf_loader.o
+deltaf_loader.o: deltaf_loader.F90 shared_data.o
 partlist.o: partlist.F90 shared_data.o
 problem_setup.o: problem_setup.f90 fields.o ic_module.o shared_data.o \
   strings.o timer.o

@@ -89,19 +89,16 @@ CONTAINS
     bx = 0.0_num
     by = 0.0_num
     bz = 0.0_num
-    IF (.true.) THEN
+    fixed_fields = .TRUE.
+    IF (.false.) THEN
        fixed_fields = .TRUE.
        bx = 1.0_num
        ey = 1.0_num
-       !ex = 2.0_num
-       !ez = 2.0_num
+
        !To do this right, need to get the offsets to the grid positions.
-       !Really need to 
        do i=1-ng,nx+ng
           do j=1-ng,ny+ng
              do k=1-ng,nz+ng
-                !bx(i,j,k) = cos(xp)
-                !by(i,j,k) = cos(xp+1.0)
                 !Correct offset for bz, is there a variable 
                 ! storing offset per field/direction?
                 xp = x_grid_min_local+(i-0.5_num)*dx

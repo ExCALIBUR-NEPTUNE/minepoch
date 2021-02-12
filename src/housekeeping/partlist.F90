@@ -22,9 +22,9 @@ CONTAINS
   SUBROUTINE setup_partlists
 
     nvar = 3 + c_ndims
-    nvar = nvar+1
-    nvar = nvar+2
-    nvar = nvar+work_ndims
+    nvar = nvar+1 ! weight
+    nvar = nvar+3 ! charge, mass, pvol
+    nvar = nvar+work_ndims ! Work array for Runge-Kutta or similar.
   END SUBROUTINE setup_partlists
 
 
@@ -319,7 +319,8 @@ CONTAINS
     cpos = cpos+1
     array(cpos) = a_particle%charge
     array(cpos+1) = a_particle%mass
-    cpos = cpos+2
+    array(cpos+2) = a_particle%pvol
+    cpos = cpos+3
     IF(work_ndims>0) THEN
        array(cpos:cpos+work_ndims-1) = a_particle%work 
        cpos = cpos+work_ndims
@@ -344,7 +345,8 @@ CONTAINS
     cpos = cpos+1
     a_particle%charge = array(cpos)
     a_particle%mass = array(cpos+1)
-    cpos = cpos+2
+    a_particle%pvol = array(cpos+2)
+    cpos = cpos+3
     IF(work_ndims>0) THEN
        a_particle%work = array(cpos:cpos+work_ndims-1)    
        cpos = cpos+work_ndims

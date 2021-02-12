@@ -176,6 +176,7 @@ MODULE shared_data
     REAL(num) :: weight
     REAL(num) :: charge
     REAL(num) :: mass
+    REAL(num) :: pvol
     REAL(num), DIMENSION(work_ndims) :: work
     TYPE(particle), POINTER :: next, prev
   END TYPE particle
@@ -208,7 +209,8 @@ MODULE shared_data
     TYPE(particle_list) :: attached_list
     LOGICAL :: immobile
     LOGICAL :: is_driftkinetic
-
+    LOGICAL :: use_deltaf = .FALSE.
+    
     ! Injection of particles
     REAL(num) :: npart_per_cell
     !TYPE(primitive_stack) :: density_function, temperature_function(3)
@@ -223,6 +225,10 @@ MODULE shared_data
     REAL(num), DIMENSION(:,:,:), POINTER :: density
     REAL(num), DIMENSION(:,:,:,:), POINTER :: temp
     REAL(num), DIMENSION(:,:,:,:), POINTER :: drift
+    ! Initial conditions for deltaf
+    REAL(num), DIMENSION(:,:,:), POINTER :: density_back
+    REAL(num), DIMENSION(:,:,:,:), POINTER :: temp_back
+    REAL(num), DIMENSION(:,:,:,:), POINTER :: drift_back
 
     REAL(num) :: density_min
     REAL(num) :: density_max

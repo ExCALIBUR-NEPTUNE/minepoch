@@ -3,7 +3,7 @@ MODULE helper
   USE boundary
   USE strings
   USE partlist
-
+  USE deltaf_loader2, ONLY: delstaf_load
   IMPLICIT NONE
 
 CONTAINS
@@ -78,7 +78,7 @@ CONTAINS
           species%drift(:,:,:,2))
       CALL setup_particle_temperature(species%temp(:,:,:,3), c_dir_z, species, &
           species%drift(:,:,:,3))
-
+      CALL delstaf_load(ispecies, species%temp, species%drift)
       IF(species%is_driftkinetic) THEN
          CALL setup_particle_driftkinetic(species)
          drift_kinetic_species_exist = .true.
@@ -266,6 +266,7 @@ CONTAINS
           current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
           current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
           current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
+          current%pvol = npart_per_cell
 
           ipart = ipart + 1
           current => current%next
@@ -448,6 +449,7 @@ CONTAINS
           current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
           current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
           current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
+          current%pvol = npart_per_cell
 
           ipart = ipart + 1
           current => current%next

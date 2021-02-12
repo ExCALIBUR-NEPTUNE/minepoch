@@ -13,17 +13,18 @@ MODULE problem_setup_module
 
 CONTAINS
 
-  SUBROUTINE problem_setup(deck_state)
+  SUBROUTINE problem_setup(deck_state, problem)
 
     INTEGER, INTENT(IN) :: deck_state
+    CHARACTER(LEN=c_max_string_length), INTENT(IN) :: problem
 
     IF (deck_state == c_ds_first) THEN
       CALL control_initialise
-      CALL boundary_initialise
-      CALL custom_problem_setup(deck_state)
+      CALL boundary_initialise(problem)
+      CALL custom_problem_setup(deck_state, problem)
     ELSE
-      CALL fields_initialise
-      CALL custom_problem_setup(deck_state)
+      CALL fields_initialise(problem)
+      CALL custom_problem_setup(deck_state, problem)
       CALL laser_finalise
       CALL species_finalise
     ENDIF
@@ -32,10 +33,12 @@ CONTAINS
 
 
 
-  SUBROUTINE boundary_initialise
+  SUBROUTINE boundary_initialise(problem)
 
+    CHARACTER(LEN=c_max_string_length), INTENT(IN) :: problem
     INTEGER :: i
 
+    ! Could add problem specific boundary conditions here
     ! Default values
     DO i = c_bd_x_min, c_bd_z_max
       bc_field(i) = c_bc_periodic
@@ -79,10 +82,14 @@ CONTAINS
 
 
 
-  SUBROUTINE fields_initialise
+  SUBROUTINE fields_initialise(problem)
     INTEGER :: i,j,k
     REAL(num) :: xp
 
+    CHARACTER(LEN=c_max_string_length), INTENT(IN) :: problem
+
+    ! Could include problem specific fields here.
+    ! Default to zero
     ex = 0.0_num
     ey = 0.0_num
     ez = 0.0_num

@@ -183,7 +183,7 @@ PREPROFLAGS = $(DEFINES) $(D)_COMMIT='"$(COMMIT)"' $(D)_DATE=$(DATE) \
 FC_INFO := $(shell ${FC} --version 2>/dev/null \
     || ${FC} -V 2>&1 | grep '[a-zA-Z]' | head -n 1)
 
-SRCFILES = balance.F90 boundary.f90 calc_df.F90 custom_laser.f90 \
+SRCFILES = balance.F90 boundary.f90 calc_df.F90 custom_laser.f90 deck.f90 \
   diagnostics.F90 epoch3d.F90 fields.f90 finish.f90 helper.F90 ic_module.f90 \
   laser.f90 mpi_routines.F90 mpi_subtype_control.f90 particle_temperature.F90 \
   particles.F90 partlist.F90 problem_setup.f90 random_generator.f90 \
@@ -249,10 +249,11 @@ boundary.o: boundary.f90 laser.o mpi_subtype_control.o particle_temperature.o \
   partlist.o
 calc_df.o: calc_df.F90 shared_data.o
 custom_laser.o: custom_laser.f90 shared_data.o
-diagnostics.o: diagnostics.F90 calc_df.o strings.o timer.o
-epoch3d.o: epoch3d.F90 balance.o diagnostics.o fields.o finish.o helper.o \
-  ic_module.o mpi_routines.o particles.o problem_setup.o setup.o welcome.o \
-  pat_mpi_lib_interface.o
+deck.o: deck.f90 shared_data.o timer.o
+diagnostics.o: diagnostics.F90 calc_df.o shared_data.o strings.o timer.o
+epoch3d.o: epoch3d.F90 balance.o deck.o diagnostics.o fields.o finish.o \
+  helper.o ic_module.o mpi_routines.o particles.o problem_setup.o \
+  shared_data.o setup.o welcome.o pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
 helper.o: helper.F90 boundary.o partlist.o strings.o particles.o \

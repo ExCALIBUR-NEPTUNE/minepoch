@@ -16,6 +16,7 @@ PROGRAM pic
   ! PSC written by Hartmut Ruhl
 
   USE balance
+  USE deck
   USE diagnostics
   USE fields
   USE helper
@@ -23,6 +24,7 @@ PROGRAM pic
   USE mpi_routines
   USE particles
   USE setup
+  USE shared_data
   USE problem_setup_module
   USE finish
   USE welcome
@@ -64,12 +66,18 @@ PROGRAM pic
   ENDIF
 
   CALL MPI_BCAST(data_dir, 64, MPI_CHARACTER, 0, comm, errcode)
-  CALL problem_setup(c_ds_first)
+
+  ! Read deck here to tell which set-up
+  CALL read_deck
+  CALL problem_setup(c_ds_first, problem)
+  ! Now re-read to override default values
+  CALL read_deck
+
   CALL setup_particle_boundaries ! boundary.f90
   CALL mpi_initialise  ! mpi_routines.f90
   CALL after_control   ! setup.f90
 
-  CALL problem_setup(c_ds_last)
+  CALL problem_setup(c_ds_last, problem)
   CALL after_deck_last
 
   ! auto_load particles

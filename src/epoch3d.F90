@@ -104,7 +104,6 @@ PROGRAM pic
   CALL particle_bcs
   CALL efield_bcs
   CALL bfield_final_bcs
-  time = time + dt / 2.0_num
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'
 

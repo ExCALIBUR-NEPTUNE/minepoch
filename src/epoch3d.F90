@@ -135,14 +135,13 @@ PROGRAM pic
 #ifdef PAT_DEBUG
     CALL pat_mpi_monitor(step,1)
 #endif
-    
+
     step = step + 1
-    time = time + dt / 2.0_num
-    CALL output_routines(step)
-    time = time - dt / 2.0_num
+    time = time + dt
 
     CALL update_eb_fields_final
-    time = time + dt
+
+    CALL output_routines(step)
 
     ! This section ensures that the particle count for the species_list
     ! objects is accurate. This makes some things easier, but increases

@@ -40,7 +40,7 @@ PROGRAM pic
 #ifdef PAT_DEBUG
   CHARACTER(LEN=17) :: patc_out_fn = "patc_epoch3d.out"//CHAR(0)
 #endif
-  
+
   REAL(num) :: runtime
   TYPE(particle_species), POINTER :: species, next_species
 
@@ -104,7 +104,6 @@ PROGRAM pic
   CALL particle_bcs
   CALL efield_bcs
   CALL bfield_final_bcs
-  time = time + dt / 2.0_num
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'
 
@@ -116,9 +115,8 @@ PROGRAM pic
 #ifdef PAT_DEBUG
   CALL pat_mpi_open(patc_out_fn)
 #endif
-  
+
   DO
-    IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
     IF (timer_collect) THEN
       CALL timer_stop(c_timer_step)
       CALL timer_reset
@@ -126,7 +124,7 @@ PROGRAM pic
     ENDIF
     push = (time >= particle_push_start_time)
     CALL update_eb_fields_half
-    
+
     IF (push) THEN
       ! .FALSE. this time to use load balancing threshold
       IF (use_balance) CALL balance_workload(.FALSE.)
@@ -136,14 +134,15 @@ PROGRAM pic
 #ifdef PAT_DEBUG
     CALL pat_mpi_monitor(step,1)
 #endif
-    
+
     step = step + 1
-    time = time + dt / 2.0_num
-    CALL output_routines(step)
-    time = time - dt / 2.0_num
+    time = time + dt
 
     CALL update_eb_fields_final
-    time = time + dt
+
+    IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
+
+    CALL output_routines(step)
 
     ! This section ensures that the particle count for the species_list
     ! objects is accurate. This makes some things easier, but increases
@@ -158,13 +157,13 @@ PROGRAM pic
       species%count_update_step = step
     ENDDO
 #endif
-    
+
   ENDDO
- 
+
 #ifdef PAT_DEBUG
   CALL pat_mpi_close()
 #endif
-  
+
   IF (rank == 0) runtime = MPI_WTIME() - walltime_start
 
   CALL output_routines(step)

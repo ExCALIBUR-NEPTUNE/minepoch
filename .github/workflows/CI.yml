@@ -42,3 +42,10 @@ jobs:
           ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py
+
+      - name: Test-Parallel
+        run: |
+          cp Data/two_stream.deck Data/input.deck
+          mpirun -np 8 ./bin/epoch3d
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python3 minepoch_py/test.py

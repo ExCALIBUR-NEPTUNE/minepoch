@@ -30,11 +30,11 @@ def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False):
 
     plt.plot(times * xscale, energies)
 
-    if (ylog):
+    if ylog:
         plt.yscale('log')
 
     plt.xlim(0, times[-1] * xscale)
-    if (xlog):
+    if xlog:
         plt.xscale('log')
 
     plt.xlabel('Time')
@@ -60,10 +60,9 @@ def energy_check(fname='Data/output.dat', check_error=False, tolerance=1e-4,
 
     if check_error:
         delta_e = np.abs(total_energy[-1] - total_energy[0]) / total_energy[0]
-        if (delta_e > tolerance):
+        if delta_e > tolerance:
             print('Energy conservation (fractional) error = %.4E' % delta_e)
             return 1
-        else:
-            return 0
-    else:
-        return None
+        return 0
+
+    return None

@@ -1,12 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.constants import electron_mass as me, elementary_charge as qe
+from scipy.constants import epsilon_0 as ep0
+from scipy.optimize import curve_fit
+from minepoch_py.energy import plot_field_energy, get_energies
 
 
 def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
                         savefig=False):
-    from scipy.constants import electron_mass as me, elementary_charge as qe
-    from scipy.constants import epsilon_0 as ep0
-    from minepoch_py.energy import plot_field_energy, get_energies
     # Cold plasma frequency
     omega = np.sqrt(8e11 * qe * qe / me / ep0)
 
@@ -39,8 +40,6 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
         energy_linear = fe[start:end]
 
         # Perform fit in log space
-        from scipy.optimize import curve_fit
-
         def curve(x, a, b):
             return a * x + b
 
@@ -55,5 +54,5 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
 
     if check_growth:
         return popt[0], np.sqrt(np.diag(pcov))[0]
-    else:
-        return None, None
+
+    return None, None

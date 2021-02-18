@@ -117,7 +117,6 @@ PROGRAM pic
 #endif
 
   DO
-    IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
     IF (timer_collect) THEN
       CALL timer_stop(c_timer_step)
       CALL timer_reset
@@ -140,6 +139,8 @@ PROGRAM pic
     time = time + dt
 
     CALL update_eb_fields_final
+
+    IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
 
     CALL output_routines(step)
 

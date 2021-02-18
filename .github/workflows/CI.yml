@@ -46,6 +46,6 @@ jobs:
       - name: Test-Parallel
         run: |
           cp Data/two_stream.deck Data/input.deck
-          mpirun -np 8 ./bin/epoch3d
+          mpirun -np 4 ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py

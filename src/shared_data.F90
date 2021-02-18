@@ -218,7 +218,8 @@ MODULE shared_data
     TYPE(particle_list) :: attached_list
     LOGICAL :: immobile
     LOGICAL :: is_driftkinetic
-    LOGICAL :: use_deltaf = .FALSE.
+    LOGICAL :: use_deltaf  = .FALSE.
+    LOGICAL :: solve_fluid = .FALSE.
     
     ! Injection of particles
     REAL(num) :: npart_per_cell

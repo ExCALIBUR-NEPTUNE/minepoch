@@ -440,10 +440,7 @@ CONTAINS
       REAL(num) :: weight_back
       REAL(num), DIMENSION(3) :: force, part_v
 
-      p_fluid0    = 0.0
-      dens_fluid0 = 0.0
-      pressuret   = 0.0
-      forcet      = 0.0
+      IF (species%solve_fluid) CALL initstep_fluid
       
       current => species%attached_list%head
 
@@ -543,18 +540,21 @@ CONTAINS
          !in time for evaluation of current at t+dt 
          CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_q),.false.)
 
-         part_v = (/part_ux, part_uy,part_uz/)
-         force = part_q*(Evec+cross(part_v,Bvec))
-         weight_back=0.0
-         CALL assignweight_fluid(current%part_pos, &
-              & (part_weight-weight_back)*current%part_p(1), &
-              & (part_weight-weight_back)*current%mass,force )
+         if (species%solve_fluid) then
+            part_v = (/part_ux, part_uy,part_uz/)
+            force = part_q*(Evec+cross(part_v,Bvec))
+            CALL assignweight_fluid(current%part_pos, &
+                 & (part_weight-weight_back)*current%part_p(1), &
+                 & (part_weight-weight_back)*current%mass,force )
+         end if
          
          current => next
       ENDDO
 
-      CALL fluideq_diag
-      CALL update_fluideq
+      IF (species%solve_fluid) then
+         CALL fluideq_diag
+         CALL update_fluideq
+      end if
       
     END SUBROUTINE push_particles_lorentz_split
 
@@ -1456,5 +1456,12 @@ CONTAINS
     
     STOP
   END SUBROUTINE SOLVE_FLUID
+
+  subroutine initstep_fluid
+      p_fluid0    = 0.0
+      dens_fluid0 = 0.0
+      pressuret   = 0.0
+      forcet      = 0.0
+  end subroutine initstep_fluid
   
 END MODULE particles

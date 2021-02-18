@@ -128,8 +128,6 @@ CONTAINS
     part_weight = species%weight
 
     ipart = 0
-
-    WRITE (*,*) '  COUNT: ' , partlist%count
     
     DO WHILE(ipart < partlist%count)
 #ifdef PER_PARTICLE_CHARGE_MASS
@@ -177,7 +175,6 @@ CONTAINS
       ipart = ipart + 1
     END DO
 #endif
-    WRITE (*,*) "QPERT"
   END SUBROUTINE delstaf_load
 
 END MODULE deltaf_loader2

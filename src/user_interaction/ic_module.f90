@@ -206,6 +206,7 @@ CONTAINS
     current_species%charge = -1.0_num * q0
 
     current_species%use_deltaf = .true.
+    current_species%solve_fluid = .true.
 
     ! npart_per_cell
     current_species%npart_per_cell = ppc

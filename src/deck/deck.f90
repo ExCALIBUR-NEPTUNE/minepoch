@@ -15,7 +15,7 @@ CONTAINS
     LOGICAL, SAVE :: first = .TRUE.
     INTEGER, SAVE :: nlines = 0
 
-    NAMELIST/control/ problem, x_min, x_max, y_min, y_max, &
+    NAMELIST/control/ problem, x_min, x_max, y_min, y_max, z_min, z_max, &
          nx_global, ny_global, nz_global, nprocx, nprocy, nprocz, &
          allow_cpu_reduce, timer_collect, use_balance, use_random_seed, &
          npart_global, nsteps, t_end, dt_multiplier, dlb_threshold, &

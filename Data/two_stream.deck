@@ -1,0 +1,4 @@
+&CONTROL
+  problem = 'two_stream',
+  stdout_frequency = 25,
+/

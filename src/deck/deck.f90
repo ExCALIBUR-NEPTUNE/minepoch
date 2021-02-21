@@ -3,6 +3,7 @@ MODULE deck
   USE mpi
   USE shared_data
   USE timer
+  USE fields
 
   IMPLICIT NONE
 
@@ -19,7 +20,8 @@ CONTAINS
          nx_global, ny_global, nz_global, nprocx, nprocy, nprocz, &
          allow_cpu_reduce, timer_collect, use_balance, use_random_seed, &
          npart_global, nsteps, t_end, dt_multiplier, dlb_threshold, &
-         stdout_frequency, particle_push_start_time, n_species
+         stdout_frequency, particle_push_start_time, n_species, &
+         fixed_fields
 
     IF (first) THEN
       ! Set the default problem here

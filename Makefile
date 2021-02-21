@@ -249,7 +249,7 @@ boundary.o: boundary.f90 laser.o mpi_subtype_control.o particle_temperature.o \
   partlist.o
 calc_df.o: calc_df.F90 shared_data.o
 custom_laser.o: custom_laser.f90 shared_data.o
-deck.o: deck.f90 shared_data.o timer.o
+deck.o: deck.f90 shared_data.o timer.o fields.o
 diagnostics.o: diagnostics.F90 calc_df.o shared_data.o strings.o timer.o
 epoch3d.o: epoch3d.F90 balance.o deck.o diagnostics.o fields.o finish.o \
   helper.o ic_module.o mpi_routines.o particles.o problem_setup.o \
@@ -258,7 +258,7 @@ fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
 helper.o: helper.F90 boundary.o partlist.o strings.o particles.o \
 	deltaf_loader.o
-ic_module.o: ic_module.f90 helper.o setup.o shared_data.o
+ic_module.o: ic_module.f90 helper.o setup.o shared_data.o fields.o
 laser.o: laser.f90 custom_laser.o
 mpi_routines.o: mpi_routines.F90 helper.o
 mpi_subtype_control.o: mpi_subtype_control.f90 shared_data.o

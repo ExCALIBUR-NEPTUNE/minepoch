@@ -4,11 +4,11 @@ from minepoch_py.energy import energy_check
 from minepoch_py.two_stream import two_stream_analysis
 
 
-def run_tests():
+def run_tests(plot=True, savefig=True):
 
-    energy_error = energy_check(check_error=True, plot=False)
+    energy_error = energy_check(check_error=True, plot=plot, savefig=savefig)
 
-    rate, _ = two_stream_analysis(check_growth=True, plot=False)
+    rate, _ = two_stream_analysis(check_growth=True, plot=plot, savefig=savefig)
 
     # Allow 5% error on growth rate
     rate_tolerance = 0.05

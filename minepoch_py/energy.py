@@ -43,7 +43,7 @@ def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False):
 
 
 def energy_check(fname='Data/output.dat', check_error=False, tolerance=1e-4,
-                 label=None, plot=True):
+                 label=None, plot=True, savefig=False):
     times, pe, fe = get_energies(fname)
     total_energy = pe + fe
 
@@ -57,6 +57,9 @@ def energy_check(fname='Data/output.dat', check_error=False, tolerance=1e-4,
         # Update legend if necessary
         if label is not None:
             plt.legend()
+
+        if savefig:
+            plt.savefig('energy_conservation.png')
 
     if check_error:
         delta_e = np.abs(total_energy[-1] - total_energy[0]) / total_energy[0]

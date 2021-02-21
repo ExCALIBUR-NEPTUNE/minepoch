@@ -6,7 +6,7 @@ from minepoch_py.two_stream import two_stream_analysis
 
 def run_tests(plot=True, savefig=True):
 
-    energy_error = energy_check(check_error=True, plot=plot, savefig=savefig)
+    energy_error = energy_check(tolerance=1e-4, plot=plot, savefig=savefig)
 
     rate, _ = two_stream_analysis(check_growth=True, plot=plot, savefig=savefig)
 

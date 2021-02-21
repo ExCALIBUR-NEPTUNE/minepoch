@@ -42,8 +42,8 @@ def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False):
     plt.tight_layout()
 
 
-def energy_check(fname='Data/output.dat', check_error=False, tolerance=1e-4,
-                 label=None, plot=True, savefig=False):
+def energy_check(fname='Data/output.dat', tolerance=None, label=None,
+                 plot=True, savefig=False):
     times, pe, fe = get_energies(fname)
     total_energy = pe + fe
 
@@ -61,7 +61,7 @@ def energy_check(fname='Data/output.dat', check_error=False, tolerance=1e-4,
         if savefig:
             plt.savefig('energy_conservation.png')
 
-    if check_error:
+    if tolerance is not None:
         delta_e = np.abs(total_energy[-1] - total_energy[0]) / total_energy[0]
         if delta_e > tolerance:
             print('Energy conservation (fractional) error = %.4E' % delta_e)

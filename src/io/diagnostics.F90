@@ -20,16 +20,21 @@ CONTAINS
     REAL(num) :: elapsed_time
     CHARACTER(LEN=16) :: timestring
     INTEGER, SAVE :: last_step = -1
-
+    LOGICAL :: fw
 #ifdef NO_IO
     RETURN
 #endif
-
+    IF(PRESENT(force_write)) THEN
+       fw = force_write
+    ELSE
+       fw=.false.
+    END IF
+    
     timer_walltime = -1.0_num
     IF (step /= last_step) THEN
       last_step = step
-      IF (rank == 0 .AND. stdout_frequency > 0 &
-          .AND. MOD(step, stdout_frequency) == 0) THEN
+      IF (rank == 0 .AND. ((stdout_frequency > 0 &
+          .AND. MOD(step, stdout_frequency) == 0) .OR. fw)) THEN
         timer_walltime = MPI_WTIME()
         elapsed_time = timer_walltime - walltime_start
         CALL create_timestring(elapsed_time, timestring)

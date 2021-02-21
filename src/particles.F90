@@ -961,7 +961,7 @@ CONTAINS
              jxh = jxh - fjx * wx
              jyh(ix) = jyh(ix) - fjy * wy
              jzh(ix, iy) = jzh(ix, iy) - fjz * wz
-             if (drift_switch) then
+             if (.NOT.drift_switch) then
                 jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
                 jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
                 jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)

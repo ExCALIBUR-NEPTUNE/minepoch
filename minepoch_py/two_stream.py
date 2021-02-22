@@ -17,7 +17,7 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
         t0 = 0.0
         t1 = 30.0
         plt.plot([t0, t1], [1e-8, 1e-8*np.exp(0.7*t1)], linestyle='--',
-                 color='black')
+                 color='black', label='Theory (0.70)')
         plt.ylim(top=1e-2)
         plt.gca().yaxis.set_ticks_position('both')
         plt.xlabel(r'$\mathrm{t}\omega_{pe}$', fontsize=16)
@@ -47,10 +47,13 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
         if plot:
             # Plot linear fit, shifted slightly vertically
             fit = 5 * np.exp(popt[1]) * np.exp(times_linear * popt[0])
-            plt.plot(times_linear, fit, color='green')
+            plt.plot(times_linear, fit, color='green',
+                     label='Observed (%.4F)' % popt[0])
 
-    if (savefig and plot):
-        plt.savefig('two_stream.png')
+    if plot:
+        plt.legend(fontsize=14, loc='upper left')
+        if savefig:
+            plt.savefig('two_stream.png')
 
     if check_growth:
         return popt[0], np.sqrt(np.diag(pcov))[0]

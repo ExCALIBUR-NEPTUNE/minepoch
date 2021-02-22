@@ -138,21 +138,24 @@ PROGRAM pic
     CALL pat_mpi_monitor(step,1)
 #endif
 
-    step = step + 1
-
-    CALL update_eb_fields_final
+   step = step + 1
+   time = time + dt
+   CALL update_eb_fields_final
     ! At this point, do the second substep of the push if there are any drift-kinetic particles
-    IF (drift_kinetic_species_exist) THEN
+   IF (drift_kinetic_species_exist) THEN
+       step=step-1
+       time=time-dt
        IF (push) THEN
           CALL push_particles_2ndstep
        END IF
        !Rewind the fields half a step
        CALL rewind_fields_halfstep
        !Then update using corrected current.
+       step = step + 1
+       time = time + dt
        CALL update_eb_fields_final      
     END IF
 
-    time = time + dt
     IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
 
     CALL output_routines(step)

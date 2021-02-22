@@ -446,10 +446,11 @@ CONTAINS
       REAL(num), DIMENSION(3) :: part_pos_t1p5, pos_half, Bvec, Evec
       REAL(num) :: weight_back, part_qfac
       REAL(num), DIMENSION(3) :: force, part_v
-      REAL(num) :: idt, dto2, dtco2
+      REAL(num) :: idt, dto2, dtco2, idt0
       REAL(num) :: dtfac
       
       idt = 1.0_num / dt_sub
+      idt0= 1.0_num / dt
       dto2 = dt_sub / 2.0_num
       dtco2 = c * dto2
       dtfac = 0.5_num * dt_sub * fac
@@ -470,7 +471,7 @@ CONTAINS
          ENDIF
 
          part_q    = current%charge
-         part_qfac = part_q * idt
+         part_qfac = part_q * idt0
          part_mc  = c * current%mass
          ipart_mc = 1.0_num / part_mc
          cmratio  = part_q * dtfac * ipart_mc

@@ -254,6 +254,7 @@ CONTAINS
     species%count_update_step = 0
     species%immobile = .FALSE.
     species%is_driftkinetic = .FALSE.
+    species%nsubstep = global_substeps
     NULLIFY(species%next)
     NULLIFY(species%prev)
     NULLIFY(species%ext_temp_x_min)

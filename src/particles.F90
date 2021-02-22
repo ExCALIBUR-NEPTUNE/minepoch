@@ -13,7 +13,7 @@ TYPE fields_eval_tmps
  END TYPE fields_eval_tmps
 
 ! Some numerical factors needed for various particle-fields routines.  
-    REAL(num) :: idtyz, idtxz, idtxy
+    REAL(num) :: i_yz, i_xz, i_xy ! can't store these as particle steps may vary
     REAL(num) :: idx, idy, idz
 
     
@@ -129,7 +129,7 @@ CONTAINS
     ! Particle weighting multiplication factor
     REAL(num) :: cf2
     REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
-
+    INTEGER :: isubstep
     TYPE(particle), POINTER :: current, next
     TYPE(particle_species), POINTER :: species, next_species
 
@@ -156,9 +156,9 @@ CONTAINS
     dtfac = 0.5_num * dt * fac
     third = 1.0_num / 3.0_num
 
-    idtyz = idt * idy * idz * fac
-    idtxz = idt * idx * idz * fac
-    idtxy = idt * idx * idy * fac
+    i_yz = idy * idz * fac
+    i_xz = idx * idz * fac
+    i_xy = idx * idy * fac
 
     next_species => species_list
     DO ispecies = 1, n_species
@@ -170,7 +170,9 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk0(species)
        ELSE
-          CALL push_particles_lorentz_split
+          DO isubstep=1,species%nsubstep
+             CALL push_particles_lorentz_split(dt/species%nsubstep)
+          END DO
        END IF
 
     ENDDO
@@ -181,6 +183,10 @@ CONTAINS
   contains
 
     SUBROUTINE push_particles_lorentz
+       REAL(num) :: idtyz, idtxz, idtxy
+       idtyz = idt * idy * idz * fac
+       idtxz = idt * idx * idz * fac
+       idtxy = idt * idx * idy * fac
 
       current => species%attached_list%head
 
@@ -434,18 +440,26 @@ CONTAINS
 
     END SUBROUTINE push_particles_lorentz
 
-    SUBROUTINE push_particles_lorentz_split
+    SUBROUTINE push_particles_lorentz_split(dt_sub)
+      REAL(num), intent(IN) :: dt_sub 
       TYPE(fields_eval_tmps) :: st_half
       REAL(num), DIMENSION(3) :: part_pos_t1p5, pos_half, Bvec, Evec
-      REAL(num) :: weight_back
+      REAL(num) :: weight_back, part_qfac
       REAL(num), DIMENSION(3) :: force, part_v
+      REAL(num) :: idt, dto2, dtco2
+      REAL(num) :: dtfac
+      
+      idt = 1.0_num / dt_sub
+      dto2 = dt_sub / 2.0_num
+      dtco2 = c * dto2
+      dtfac = 0.5_num * dt_sub * fac
 
       IF (species%solve_fluid) CALL initstep_fluid
       
       current => species%attached_list%head
 
       IF (.NOT. particles_uniformly_distributed) THEN
-         part_weight = species%weight
+         part_weight = species%weight 
       ENDIF
 
       !DEC$ VECTOR ALWAYS
@@ -455,7 +469,8 @@ CONTAINS
             part_weight = current%weight
          ENDIF
 
-         part_q   = current%charge
+         part_q    = current%charge
+         part_qfac = part_q * idt
          part_mc  = c * current%mass
          ipart_mc = 1.0_num / part_mc
          cmratio  = part_q * dtfac * ipart_mc
@@ -525,9 +540,6 @@ CONTAINS
          ! calculated current.
          IF(species%use_deltaf) THEN
             weight_back = current%pvol * f0(species, current, current%mass)
-            fcx = idtyz * (part_weight - weight_back)
-            fcy = idtxz * (part_weight - weight_back)
-            fcz = idtxy * (part_weight - weight_back)
          END IF
             
          ! Now advance to t+1.5dt to calculate current. This is detailed in
@@ -538,7 +550,7 @@ CONTAINS
          !Current deposition uses position at t+0.5dt and t+1.5dt, particle
          !assumed to travel in direct line between these locations. Second order 
          !in time for evaluation of current at t+dt 
-         CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_q),.false.)
+         CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_qfac),.false.)
 
          if (species%solve_fluid) then
             part_v = (/part_ux, part_uy,part_uz/)
@@ -575,8 +587,10 @@ CONTAINS
 
       REAL(num) :: part_mu, part_u, bdotBmag
       REAL(num) :: part_u_0,part_u_h, dudt
-      REAL(num) :: part_q, part_weight
+      REAL(num) :: part_q, part_weight, part_qfac
       INTEGER(i8) :: ipart
+      REAL(num) :: idt
+      idt = 1.0_num/dt
 
 
       current => species%attached_list%head
@@ -593,6 +607,7 @@ CONTAINS
          ENDIF
 
          part_q   = current%charge
+         part_qfac= part_q * idt
          ! Do nonrelativistic drift-kinetics for the moment.
          part_u   = current%part_p(1)
          part_mu  = current%part_p(2)
@@ -620,7 +635,7 @@ CONTAINS
          !Do current deposition using lowest order current. (current at t_{N+1})
          !Before we apply this current, E+B need to be stored in a temporary;
          !this is the lowest order current.
-         CALL current_deposition_store(st_0,pos_0,(part_weight*part_q),.true.)
+         CALL current_deposition_store(st_0,pos_0,(part_weight*part_qfac),.true.)
 
          
          current => next
@@ -642,9 +657,11 @@ CONTAINS
 
       REAL(num) :: part_mu, part_u, bdotBmag
       REAL(num) :: part_u_h, dudt_1
-      REAL(num) :: part_q, part_weight
+      REAL(num) :: part_q, part_weight, part_qfac
       INTEGER(i8) :: ipart
-
+      REAL(num) :: idt
+      idt = 1.0_num/dt
+      
       current => species%attached_list%head
 
       IF (.NOT. particles_uniformly_distributed) THEN
@@ -659,6 +676,7 @@ CONTAINS
          ENDIF
 
          part_q   = current%charge
+         part_qfac= part_q * idt
          ! Do nonrelativistic drift-kinetics for the moment.
          part_u   = current%part_p(1)
          part_mu  = current%part_p(2)
@@ -922,9 +940,9 @@ CONTAINS
     zmin = sf_min + (dcellz - 1) / 2
     zmax = sf_max + (dcellz + 1) / 2
 
-    fjx = idtyz * chargeweight
-    fjy = idtxz * chargeweight
-    fjz = idtxy * chargeweight
+    fjx = i_yz * chargeweight
+    fjy = i_xz * chargeweight
+    fjz = i_xy * chargeweight
     
     jzh = 0.0_num
     DO iz = zmin, zmax

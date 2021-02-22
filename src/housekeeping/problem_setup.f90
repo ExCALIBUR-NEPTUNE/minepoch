@@ -77,12 +77,15 @@ CONTAINS
     use_random_seed = .FALSE.
     particle_push_start_time = 0.0_num
     n_species = 0
-
+    fixed_fields = .FALSE.
+    
   END SUBROUTINE control_initialise
 
 
 
   SUBROUTINE fields_initialise(problem)
+    INTEGER :: i,j,k
+    REAL(num) :: xp
 
     CHARACTER(LEN=c_max_string_length), INTENT(IN) :: problem
 
@@ -94,7 +97,27 @@ CONTAINS
     bx = 0.0_num
     by = 0.0_num
     bz = 0.0_num
-
+    SELECT CASE (TRIM(problem))
+    CASE ('one_stream')
+       IF (.false.) THEN
+          bx = 1.0_num
+          ey = 1.0_num
+          
+          !To do this right, need to get the offsets to the grid positions.
+          do i=1-ng,nx+ng
+             do j=1-ng,ny+ng
+                do k=1-ng,nz+ng
+                   !Correct offset for bz, is there a variable 
+                   ! storing offset per field/direction?
+                   xp = x_grid_min_local+(i-0.5_num)*dx
+                   bz(i,j,k) = cos(xp)
+                   
+                end do
+             end do
+          end do
+       END IF
+    CASE default
+    END SELECT
   END SUBROUTINE fields_initialise
 
 

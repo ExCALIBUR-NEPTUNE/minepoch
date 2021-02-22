@@ -86,7 +86,9 @@ PROGRAM pic
 
   CALL manual_load
   CALL set_dt
-  CALL deallocate_ic
+
+  ! Use initial conditions to setup fluid equations.
+  CALL setup_fluid
 
   npart_global = 0
 
@@ -104,6 +106,7 @@ PROGRAM pic
   CALL particle_bcs
   CALL efield_bcs
   CALL bfield_final_bcs
+
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'
 
@@ -135,10 +138,23 @@ PROGRAM pic
     CALL pat_mpi_monitor(step,1)
 #endif
 
-    step = step + 1
-    time = time + dt
-
-    CALL update_eb_fields_final
+   step = step + 1
+   time = time + dt
+   CALL update_eb_fields_final
+    ! At this point, do the second substep of the push if there are any drift-kinetic particles
+   IF (drift_kinetic_species_exist) THEN
+       step=step-1
+       time=time-dt
+       IF (push) THEN
+          CALL push_particles_2ndstep
+       END IF
+       !Rewind the fields half a step
+       CALL rewind_fields_halfstep
+       !Then update using corrected current.
+       step = step + 1
+       time = time + dt
+       CALL update_eb_fields_final      
+    END IF
 
     IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
 

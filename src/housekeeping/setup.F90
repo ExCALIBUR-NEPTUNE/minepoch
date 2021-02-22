@@ -253,6 +253,7 @@ CONTAINS
     species%npart_per_cell = -1
     species%count_update_step = 0
     species%immobile = .FALSE.
+    species%is_driftkinetic = .FALSE.
     NULLIFY(species%next)
     NULLIFY(species%prev)
     NULLIFY(species%ext_temp_x_min)
@@ -361,14 +362,6 @@ CONTAINS
   SUBROUTINE set_initial_values
 
     INTEGER :: seed
-
-    ex = 0.0_num
-    ey = 0.0_num
-    ez = 0.0_num
-
-    bx = 0.0_num
-    by = 0.0_num
-    bz = 0.0_num
 
     jx = 0.0_num
     jy = 0.0_num

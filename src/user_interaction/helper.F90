@@ -3,7 +3,7 @@ MODULE helper
   USE boundary
   USE strings
   USE partlist
-
+  USE deltaf_loader2, ONLY: delstaf_load
   IMPLICIT NONE
 
 CONTAINS
@@ -78,6 +78,11 @@ CONTAINS
           species%drift(:,:,:,2))
       CALL setup_particle_temperature(species%temp(:,:,:,3), c_dir_z, species, &
           species%drift(:,:,:,3))
+      CALL delstaf_load(ispecies, species%temp, species%drift)
+      IF(species%is_driftkinetic) THEN
+         CALL setup_particle_driftkinetic(species)
+         drift_kinetic_species_exist = .true.
+      END IF
 
       IF (rank == 0) THEN
         IF (species%count < 0) THEN
@@ -90,7 +95,39 @@ CONTAINS
 
   END SUBROUTINE auto_load
 
+  SUBROUTINE setup_particle_driftkinetic(part_species) 
+    USE particles, ONLY: get_fields_at_point
+    TYPE(particle_species), POINTER, INTENT(INOUT) :: part_species
+    TYPE(particle_list), POINTER :: partlist
+    REAL(num) :: mass, Bnorm, mu, ppll, pperp
+    TYPE(particle), POINTER :: current
+    INTEGER(i8) :: ipart
 
+    REAL(num), DIMENSION(3)  :: pvec,bvec,evec, bdir
+    REAL(num), DIMENSION(3,3) :: btens
+
+     partlist => part_species%attached_list
+     current => partlist%head
+     ipart = 0
+     DO WHILE(ipart < partlist%count)
+        mass = current%mass
+        CALL get_fields_at_point(current%part_pos,bvec,evec,btens)
+        Bnorm = sqrt(dot_product(Bvec,Bvec))
+        bdir = Bvec/Bnorm
+        pvec = current%part_p
+        ppll = dot_product(bdir,pvec)
+        pperp = sqrt(max(dot_product(pvec,pvec)-ppll*ppll,0.0_num))
+        mu = pperp*pperp/(2*mass*Bnorm)
+
+        !part_p(3) is not used but could track gyroangle if useful.
+        current%part_p(1) = ppll/mass
+        current%part_p(2) = mu
+        !Use this as a label.
+        current%part_p(3) = ipart
+        current => current%next
+        ipart = ipart + 1
+     ENDDO
+  END SUBROUTINE setup_particle_driftkinetic
 
   SUBROUTINE allocate_ic
 
@@ -229,6 +266,7 @@ CONTAINS
           current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
           current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
           current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
+          current%pvol = npart_per_cell
 
           ipart = ipart + 1
           current => current%next
@@ -411,6 +449,7 @@ CONTAINS
           current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
           current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
           current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
+          current%pvol = npart_per_cell
 
           ipart = ipart + 1
           current => current%next

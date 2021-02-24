@@ -43,6 +43,13 @@ jobs:
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py
 
+      - name: Test-substep
+        run: |
+          cp Data/two_stream_substep.deck Data/input.deck
+          ./bin/epoch3d
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python3 minepoch_py/test.py
+
       - name: Test-Parallel
         run: |
           cp Data/two_stream.deck Data/input.deck

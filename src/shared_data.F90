@@ -220,6 +220,7 @@ MODULE shared_data
     LOGICAL :: is_driftkinetic
     LOGICAL :: use_deltaf  = .FALSE.
     LOGICAL :: solve_fluid = .FALSE.
+    INTEGER :: nsubstep = 1
     
     ! Injection of particles
     REAL(num) :: npart_per_cell
@@ -393,6 +394,8 @@ MODULE shared_data
   LOGICAL, DIMENSION(c_dir_x:c_dir_z,0:c_stagger_max) :: stagger
   INTEGER(i8) :: push_per_field = 5
 
+  INTEGER :: global_substeps = 1
+  
   ! Absorption diagnostic
   REAL(num) :: laser_inject_local = 0.0_num
   REAL(num) :: laser_absorb_local = 0.0_num

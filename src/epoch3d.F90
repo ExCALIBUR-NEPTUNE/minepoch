@@ -151,7 +151,7 @@ PROGRAM pic
 #endif
       step = step + 1
       time = time + dt
- 
+
       CALL update_eb_fields_final
       ! At this point, do the second substep of the push if there are any drift-kinetic particles
       IF (drift_kinetic_species_exist) THEN
@@ -165,7 +165,7 @@ PROGRAM pic
         ! Then update using corrected current.
         step = step + 1
         time = time + dt
-        CALL update_eb_fields_final      
+        CALL update_eb_fields_final
       END IF
     ELSE
       IF (rank == 0) THEN
@@ -173,11 +173,11 @@ PROGRAM pic
       END IF
       CALL MPI_ABORT(MPI_COMM_WORLD, c_err_not_implemented, ierr)
     END IF
-   
+
+    IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
+
     ! Output any diagnostics
     CALL output_routines(step)
-    
-    IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
 
     ! This section ensures that the particle count for the species_list
     ! objects is accurate. This makes some things easier, but increases

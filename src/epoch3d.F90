@@ -107,11 +107,14 @@ PROGRAM pic
     CALL particle_bcs
     CALL efield_bcs(ex, ey, ez, ng)
     CALL bfield_final_bcs(bx, by, bz, ng)
-#ifdef TRILINOS
   ELSE
-    ! TODO: This fails silently if explicit_pic = .FALSE.
-    ! but Trilinos not enabled at compile time
+#ifdef TRILINOS
     CALL init_trilinos(local_elements, linear_index, comm)
+#else
+    IF (rank == 0) THEN
+      PRINT*, 'Implicit PIC must be enabled at compile time: -DEF=TRILINOS'
+    END IF
+    CALL MPI_ABORT(MPI_COMM_WORLD, c_err_pp_options_wrong, ierr)
 #endif
   END IF
 

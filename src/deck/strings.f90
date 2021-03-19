@@ -55,7 +55,7 @@ CONTAINS
   FUNCTION str_cmp(str_in, str_test)
 
     CHARACTER(*), INTENT(IN) ::  str_in, str_test
-    CHARACTER(LEN=string_length) :: str_trim
+    CHARACTER(LEN=c_max_string_length) :: str_trim
     INTEGER :: test_len, in_len
     LOGICAL :: str_cmp
 

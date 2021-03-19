@@ -127,10 +127,7 @@ MODULE constants
   INTEGER, PARAMETER :: c_stagger_max = c_stagger_ex + c_stagger_bx
 
   ! Length of a standard string
-  ! TODO Why so many different values here?
-  INTEGER, PARAMETER :: string_length = 256
-  INTEGER, PARAMETER :: c_max_string_length = 64
-  INTEGER, PARAMETER :: c_id_length = 32
+  INTEGER, PARAMETER :: c_max_string_length = 256
 
 END MODULE constants
 
@@ -146,11 +143,11 @@ MODULE shared_data
   !----------------------------------------------------------------------------
   ! string handling
   !----------------------------------------------------------------------------
-  CHARACTER(LEN=string_length) :: blank
+  CHARACTER(LEN=c_max_string_length) :: blank
   TYPE string_type
-    CHARACTER(string_length) :: value
+    CHARACTER(c_max_string_length) :: value
   END TYPE string_type
-  CHARACTER(LEN=string_length) :: extended_error_string
+  CHARACTER(LEN=c_max_string_length) :: extended_error_string
 
   !----------------------------------------------------------------------------
   ! Choice of problem set-up
@@ -206,7 +203,7 @@ MODULE shared_data
   ! Object representing a particle species
   TYPE particle_species
     ! Core properties
-    CHARACTER(string_length) :: name
+    CHARACTER(c_max_string_length) :: name
     TYPE(particle_species), POINTER :: next, prev
     INTEGER :: id
     INTEGER :: count_update_step

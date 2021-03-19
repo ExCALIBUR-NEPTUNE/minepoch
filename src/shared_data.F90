@@ -313,7 +313,7 @@ MODULE shared_data
   LOGICAL :: use_esirkepov = .TRUE.
 
   ! Switch between explicit PIC and implicit PIC
-  LOGICAL, PARAMETER :: explicit_pic = .FALSE.
+  LOGICAL :: explicit_pic = .TRUE.
 
   INTEGER, ALLOCATABLE, DIMENSION(:) :: linear_index
   INTEGER :: local_elements

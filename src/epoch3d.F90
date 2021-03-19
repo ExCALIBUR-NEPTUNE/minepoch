@@ -21,6 +21,7 @@ PROGRAM pic
   USE fields
   USE helper
   USE ic_module
+  USE implicit
   USE mpi_routines
   USE particles
   USE setup
@@ -109,6 +110,7 @@ PROGRAM pic
     CALL bfield_final_bcs(bx, by, bz, ng)
   ELSE
 #ifdef TRILINOS
+    CALL init_1d_index
     CALL init_trilinos(local_elements, linear_index, comm)
 #else
     IF (rank == 0) THEN

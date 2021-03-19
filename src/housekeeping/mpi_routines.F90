@@ -358,7 +358,6 @@ CONTAINS
       ! Number of elements in local problem
       local_elements = nx * ny * nz * 6
       ALLOCATE(linear_index(local_elements))
-      ! TODO - set elsewhere
       linear_index = 0
     END IF
 

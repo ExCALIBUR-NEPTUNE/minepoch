@@ -72,9 +72,9 @@ CONTAINS
 
   SUBROUTINE grow_string_array(array, idx)
 
-    CHARACTER(LEN=string_length), DIMENSION(:), POINTER :: array
+    CHARACTER(LEN=c_max_string_length), DIMENSION(:), POINTER :: array
     INTEGER, INTENT(IN) :: idx
-    CHARACTER(LEN=string_length), DIMENSION(:), ALLOCATABLE :: tmp_array
+    CHARACTER(LEN=c_max_string_length), DIMENSION(:), ALLOCATABLE :: tmp_array
     INTEGER :: old_size, new_size, i
 
     old_size = SIZE(array)

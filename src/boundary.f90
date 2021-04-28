@@ -849,8 +849,10 @@ CONTAINS
 
 
 
-  SUBROUTINE efield_bcs
+  SUBROUTINE efield_bcs(ex, ey, ez, ng)
 
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: ex, ey, ez
+    INTEGER, INTENT(IN) :: ng
     INTEGER :: i
 
     ! These are the MPI boundaries
@@ -902,8 +904,10 @@ CONTAINS
 
 
 
-  SUBROUTINE bfield_bcs(mpi_only)
+  SUBROUTINE bfield_bcs(bx, by, bz, ng, mpi_only)
 
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: bx, by, bz
+    INTEGER, INTENT(IN) :: ng
     LOGICAL, INTENT(IN) :: mpi_only
     INTEGER :: i
 
@@ -961,11 +965,13 @@ CONTAINS
 
 
 
-  SUBROUTINE bfield_final_bcs
+  SUBROUTINE bfield_final_bcs(bx, by, bz, ng)
 
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: bx, by, bz
+    INTEGER, INTENT(IN) :: ng
     INTEGER :: i
 
-    CALL bfield_bcs(.FALSE.)
+    CALL bfield_bcs(bx, by, bz, ng, .FALSE.)
 
     IF (x_min_boundary) THEN
       i = c_bd_x_min
@@ -1003,7 +1009,7 @@ CONTAINS
           CALL outflow_bcs_z_max
     ENDIF
 
-    CALL bfield_bcs(.TRUE.)
+    CALL bfield_bcs(bx, by, bz, ng, .TRUE.)
 
   END SUBROUTINE bfield_final_bcs
 

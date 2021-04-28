@@ -279,13 +279,13 @@ CONTAINS
     CALL update_e_field
 
     ! Now have E(t+dt/2), do boundary conditions on E
-    CALL efield_bcs
+    CALL efield_bcs(ex, ey, ez, ng)
 
     ! Update B field to t+dt/2 using E(t+dt/2)
     CALL update_b_field
 
     ! Now have B field at t+dt/2. Do boundary conditions on B
-    CALL bfield_bcs(.TRUE.)
+    CALL bfield_bcs(ex, ey, ez, ng, .TRUE.)
 
     ! Now have E&B fields at t = t+dt/2
     ! Move to particle pusher
@@ -329,11 +329,11 @@ CONTAINS
 
     CALL update_b_field
 
-    CALL bfield_final_bcs
+    CALL bfield_final_bcs(bx, by, bz, ng)
 
     CALL update_e_field
 
-    CALL efield_bcs
+    CALL efield_bcs(ex, ey, ez, ng)
 
   END SUBROUTINE update_eb_fields_final
 

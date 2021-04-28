@@ -173,10 +173,9 @@ PROGRAM pic
         CALL update_eb_fields_final
       END IF
     ELSE
-      IF (rank == 0) THEN
-        WRITE(*,*) 'Implicit PIC not implemented yet!'
-      END IF
-      CALL MPI_ABORT(MPI_COMM_WORLD, c_err_not_implemented, ierr)
+      CALL solve_implicit_pic
+      step = step + 1
+      time = time + dt
     END IF
 
     IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT

@@ -19,4 +19,10 @@ extern "C" {
     std::cout << "End trilinos not implemented yet!" << std::endl;
     MPI_Abort(MPI_COMM_WORLD, c_err_not_implemented);
   }
+
+  void solve_gmres_(double* x, double *dir) {
+
+    PICSolver->Solve(x, dir);
+
+  }
 }

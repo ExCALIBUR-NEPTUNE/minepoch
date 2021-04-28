@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
+import sys
 from minepoch_py.energy import energy_check
 from minepoch_py.two_stream import two_stream_analysis
 
@@ -31,4 +32,4 @@ def run_tests(plot=True, savefig=True):
 
 if __name__ == "__main__":
     # Run error analysis
-    run_tests()
+    sys.exit(run_tests())

@@ -79,7 +79,7 @@ void JFNKSolver::CreateJacobian() {
   JacFree->setLambda(1e-6);
 }
 
-void JFNKSolver::Solve(int &niter, double *x0, double *p) {
+void JFNKSolver::Solve(double *x0, double *p) {
 
   double norm;
 

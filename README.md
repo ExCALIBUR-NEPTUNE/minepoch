@@ -8,10 +8,15 @@ coupled to Lagrangian particles.
 
 ## Compiling the code
 
-The code can be compiled using make, and an appropriately set compiler variable, for example
-`make COMPILER=gfortran`. The requirements are minimal, only a Fortran compiler and MPI are
-required to compile and run the code. The code is routinely run on both Linux and OS X, and
-tested with gfortran, but other compilers (e.g. `make COMPILER=intel`) ought to work.
+The code can be compiled using make, and an appropriately set compiler variable, for example:
+
+```
+$ make COMPILER=gfortran
+```
+
+The requirements are minimal, only a Fortran compiler and MPI are required to compile and run
+the code. The code is routinely run on both Linux and OS X, and tested with gfortran, but
+other compilers (e.g. `make COMPILER=intel`) ought to work.
 
 ## Running the code
 

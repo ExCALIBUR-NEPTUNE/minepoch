@@ -1,0 +1,4 @@
+&CONTROL
+  problem = 'one_stream',
+  stdout_frequency = 25,
+/

@@ -40,7 +40,8 @@ PROGRAM pic
 #ifdef PAT_DEBUG
   CHARACTER(LEN=17) :: patc_out_fn = "patc_epoch3d.out"//CHAR(0)
 #endif
-
+  REAL :: dt1,dt2
+  
   REAL(num) :: runtime
   TYPE(particle_species), POINTER :: species, next_species
 
@@ -119,6 +120,9 @@ PROGRAM pic
   CALL pat_mpi_open(patc_out_fn)
 #endif
 
+  dt1 = 2.0*dt*(1.0_num - 1.0_num/(2*global_substeps))
+  dt2 = 2.0*dt - dt1
+  
   DO
     IF (timer_collect) THEN
       CALL timer_stop(c_timer_step)
@@ -126,7 +130,7 @@ PROGRAM pic
       timer_first(c_timer_step) = timer_walltime
     ENDIF
     push = (time >= particle_push_start_time)
-    CALL update_eb_fields_half
+    CALL update_eb_fields_half(dt1)
 
     IF (push) THEN
       ! .FALSE. this time to use load balancing threshold
@@ -140,7 +144,7 @@ PROGRAM pic
 
    step = step + 1
    time = time + dt
-   CALL update_eb_fields_final
+   CALL update_eb_fields_final(dt2)
     ! At this point, do the second substep of the push if there are any drift-kinetic particles
    IF (drift_kinetic_species_exist) THEN
        step=step-1
@@ -153,7 +157,7 @@ PROGRAM pic
        !Then update using corrected current.
        step = step + 1
        time = time + dt
-       CALL update_eb_fields_final      
+       CALL update_eb_fields_final(dt2)      
     END IF
 
     IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT

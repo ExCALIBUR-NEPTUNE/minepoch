@@ -58,6 +58,39 @@ CONTAINS
                 + cnx * (by(ix  , iy  , iz  ) - by(ix-1, iy  , iz  )) &
                 - cny * (bx(ix  , iy  , iz  ) - bx(ix  , iy-1, iz  )) &
                 - fac * jz(ix, iy, iz)
+
+            
+            curlE(1) =  
+                + cny * (bz(ix  , iy  , iz  ) - bz(ix  , iy-1, iz  )) &
+                - cnz * (by(ix  , iy  , iz  ) - by(ix  , iy  , iz-1)) &
+                - fac * jx(ix, iy, iz)
+         
+            curlE(2) =
+                + cnz * (bx(ix  , iy  , iz  ) - bx(ix  , iy  , iz-1)) &
+                - cnx * (bz(ix  , iy  , iz  ) - bz(ix-1, iy  , iz  )) &
+                - fac * jy(ix, iy, iz)
+
+            curlE(3) =
+                + cnx * (by(ix  , iy  , iz  ) - by(ix-1, iy  , iz  )) &
+                - cny * (bx(ix  , iy  , iz  ) - bx(ix  , iy-1, iz  )) &
+                - fac * jz(ix, iy, iz)
+
+            epsinv = 0.0
+            do ir=1,3
+            epsinv(ir,ir) = eps_pol 
+            end do
+            do ir=1,3
+            do jr=1,3
+               epsinv(ir,jr) = epsinv(ir,jr) + (epsilon0-eps_pol)*bnorm(ir)*bnorm(jr)
+            end do
+            end do
+
+            do ir = 1,3
+                ex(ix, iy, iz) = ex(ix, iy, iz) + epsinv(ir,1)*curlE(ir)
+                ey(ix, iy, iz) = ey(ix, iy, iz) + epsinv(ir,2)*curlE(ir)
+                ez(ix, iy, iz) = ez(ix, iy, iz) + epsinv(ir,3)*curlE(ir)
+            end do
+
           ENDDO
         ENDDO
       ENDDO
@@ -261,9 +294,11 @@ CONTAINS
 
 
 
-  SUBROUTINE update_eb_fields_half
+  SUBROUTINE update_eb_fields_half(dt)
+    REAL, INTENT(IN) :: dt
     IF(fixed_fields) RETURN
-
+   
+    
     hdt  = 0.5_num * dt
     hdtx = hdt / dx
     hdty = hdt / dy
@@ -301,7 +336,9 @@ CONTAINS
     bz = bz_back
   END SUBROUTINE rewind_fields_halfstep
 
-  SUBROUTINE update_eb_fields_final
+  SUBROUTINE update_eb_fields_final(dt)
+    REAL, INTENT(IN) :: dt
+    
     IF(drift_kinetic_species_exist) THEN
        !Save EM fields to a temporary to allow us to rewind half a step
        ex_back = ex

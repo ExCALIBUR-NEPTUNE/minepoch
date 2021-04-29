@@ -104,8 +104,8 @@ PROGRAM pic
   IF (npart_global > 0) CALL balance_workload(.TRUE.)
 
   CALL particle_bcs
-  CALL efield_bcs
-  CALL bfield_final_bcs
+  CALL efield_bcs(ex, ey, ez, ng)
+  CALL bfield_final_bcs(bx, by, bz, ng)
 
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'

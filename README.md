@@ -32,8 +32,8 @@ To run one of these problems the input deck must be copied to the correct locati
 minepoch, for example:
 
 ```
-cp Data/two_stream.deck Data/input.deck
-./bin/epoch3d
+$ cp Data/two_stream.deck Data/input.deck
+$ ./bin/epoch3d
 ```
 
 ## Analysing the results
@@ -44,4 +44,4 @@ the directory `minepoch_py`.
 
 ## Any problems?
 
-Please open an issue on the issue tracker.
+Please open an issue on the [issue tracker](https://github.com/ExCALIBUR-NEPTUNE/minepoch/issues).

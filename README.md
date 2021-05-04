@@ -9,10 +9,15 @@ treated.
 
 ## Compiling the code
 
-The code can be compiled using make, and an appropriately set compiler variable, for example
-`make COMPILER=gfortran`. The requirements are minimal, only a Fortran compiler and MPI are
-required to compile and run the code. The code is routinely run on both Linux and OS X, and
-tested with gfortran, but other compilers (e.g. `make COMPILER=intel`) ought to work.
+The code can be compiled using make, and an appropriately set compiler variable, for example:
+
+```
+$ make COMPILER=gfortran
+```
+
+The requirements are minimal, only a Fortran compiler and MPI are required to compile and run
+the code. The code is routinely run on both Linux and OS X, and tested with gfortran, but
+other compilers (e.g. `make COMPILER=intel`) ought to work.
 
 ## Running the code
 
@@ -32,8 +37,8 @@ To run one of these problems the input deck must be copied to the correct locati
 minepoch, for example:
 
 ```
-cp Data/two_stream.deck Data/input.deck
-./bin/epoch3d
+$ cp Data/two_stream.deck Data/input.deck
+$ ./bin/epoch3d
 ```
 
 ## Analysing the results
@@ -44,4 +49,4 @@ the directory `minepoch_py`.
 
 ## Any problems?
 
-Please open an issue on the issue tracker.
+Please open an issue on the [issue tracker](https://github.com/ExCALIBUR-NEPTUNE/minepoch/issues).

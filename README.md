@@ -4,7 +4,8 @@ Minepoch is a mini-app version of the relativistic electromagnetic particle in c
 [EPOCH](https://github.com/Warwick-Plasma/epoch). Minepoch is deisgned to act both as a proxy-app
 for performance testing as well as a test-bed for PIC algorithm development. Minepoch contains the
 same core physics module as EPOCH, in which Maxwell's equations are solved on an Eulerian mesh,
-coupled to Lagrangian particles.
+coupled to Lagrangian particles, as well as extensions to allow drift-kinetic particles to be 
+treated.
 
 ## Compiling the code
 
@@ -25,8 +26,7 @@ A number of example input decks are included with the code:
  - `Data/two_stream.deck`: A two-stream instability, run with the standard PIC algorithm
  - `Data/two_stream_substep.deck`: The same two-stream instability, but with particle
     substepping enabled.
- - `Data/one_stream.deck`: ???
- - `example_decks/one_stream.deck`: ???
+ - `Data/one_stream.deck`: A 1D force-free problem illustrating the use of low-noise control-variates.
  
 To run one of these problems the input deck must be copied to the correct location before running
 minepoch, for example:

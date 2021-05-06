@@ -235,12 +235,18 @@ datatidy:
 tarball:
 	@cd ..; sh make_tarball.sh
 
+docs:
+	@cd Docs; latexmk -pdf report_implemented.tex
+
+cleandocs:
+	@cd Docs; rm -f *.aux *.bbl *.blg *.fdb_latexmk *.fls *.log *.out *.pdf
+
 $(OBJFILES): | $(OBJDIR)
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
 
-.PHONY: clean cleanall tidy datatidy visit visitclean main FORCE
+.PHONY: clean cleanall tidy datatidy visit visitclean main FORCE docs cleandocs
 
 # All the dependencies
 

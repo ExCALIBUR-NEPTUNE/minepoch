@@ -1,7 +1,7 @@
 # minepoch
 
 Minepoch is a mini-app version of the relativistic electromagnetic particle in cell (PIC) code
-[EPOCH](https://github.com/Warwick-Plasma/epoch). Minepoch is deisgned to act both as a proxy-app
+[EPOCH](https://github.com/Warwick-Plasma/epoch). Minepoch is designed to act both as a proxy-app
 for performance testing as well as a test-bed for PIC algorithm development. Minepoch contains the
 same core physics module as EPOCH, in which Maxwell's equations are solved on an Eulerian mesh,
 coupled to Lagrangian particles, as well as extensions to allow drift-kinetic particles to be 

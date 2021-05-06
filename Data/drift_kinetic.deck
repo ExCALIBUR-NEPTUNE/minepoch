@@ -1,0 +1,4 @@
+&CONTROL
+  problem = 'drift_kin_default',
+  stdout_frequency = 25,
+/

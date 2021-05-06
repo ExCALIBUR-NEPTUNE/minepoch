@@ -1,0 +1,100 @@
+\documentclass{article}
+
+\bibliographystyle{unsrt}
+
+\title{New features in minepoch for advanced particle tracing and noise reduction}
+\author{B.F. McMillan and T. Goffrey}
+
+
+\begin{document}
+
+\maketitle
+
+This describes certain new features added to the minepoch code as part of the NEPTUNE project (Milestones 4 and 5 of the Particles subproject).
+
+The minepoch code is designed as a proxy app for computational performance testing with a minimal codebase, and therefore does not contain a full input deck parser. Certain parameters may be adjusted via the input deck (FORTRAN namelist), but more complex modifications require hard-coded setup subroutines; there is a string-valued namelist parameter 'problem' that selects which setup subroutine is used. 
+
+See the README file for a description of how to run relevant testcases.
+
+We describe the foundations for the new algorithms, and in the final section note some practical implementation aspects.
+
+\section{Advanced particle tracing (M4)}
+
+\subsection{Substepping}
+
+The normal PIC algorithm\cite{Arber_EPOCH} may be conceptually represented as a leapfrog method of the form:
+
+\begin{itemize}
+\item
+  Advance particle momentum from $p_{t-3 h/2}$ to $p_{t-h/2}$ using $E_{t-h}, B_{t-h}$.
+\item
+  Advance particle position from $x_{t-h}$ to $x_{h}$ using velocity calculated from momentum $p_{t-h/2}$.
+\item
+  Deposit (time-integrated) current based on the previous and current
+  position (this is the charge-conserving Esirkepov step\cite{ESIRKEPOV2001}.
+\item
+  Advance Electric and Magnetic fields from $E_{t-h}, B_{t-h}$ to $E_t, B_t$ using the currents calculated in the previous step.
+\end{itemize}
+
+In cases where the timestep limitation is due to particle gyration, a simple substepping method consists of repeating the first two of these operations $N$ times with a reduced timestep $H=h/N$. Each substep $n \in [1,N]$ is of the form
+\begin{equation}
+   (p_{t + (2 n - 3) H/2},x_{ t + (2 n -2 ) H} ) \rightarrow (p_{t + (2 n - 1) H/2},x_{t- (2 n -2 )H/2})
+\end{equation}
+with overall effect of $N$ substeps 
+  \begin{equation}
+   (p_{t +  H/2},x_{ t} ) \rightarrow (p_{t + h + H/2},x_{t + h}).
+\end{equation} 
+  In the simple substepping currently implemented in minepoch, the current is calculated using these endpoints, so that the field is no longer time-centred. This reduces the time-accuracy of the scheme to first order for time-varying $E$ and $B$ fields (for particle tracing in static fields the algorithm is second order).
+
+Although correcting the currents to restore  second-order accuracy in time is possible, the main purpose of substepping is in conjunction with an implicit field solver. 
+  
+\subsection{Drift-kinetic species}
+
+Drift-kinetic species with phase-space coordinates $\mathbf{Z}=(\mathbf{R},v_{||},\mu)$ follow the Euler-Lagrange equations
+\begin{equation}
+  \frac{d \mathbf{R}}{dt} = \mathbf{b} v_{||}
+  + \frac{\mathbf{E} \times \mathbf{B}}{B^2}
+  + \frac{m v_{||}^2}{q B^2} \mathbf{B} \times \left( \mathbf{b} . \nabla \mathbf{b} \right)
+  + \frac{\mu B}{2 q B^3} \mathbf{B} \times \nabla B,
+\end{equation}
+\begin{equation}
+  m \frac{d v_{||}}{dt} = - \mathbf{b} . ( e \nabla \phi + \mu \nabla B )  
+\end{equation}
+and
+\begin{equation}
+  \frac{d \mu}{dt} = 0.
+\end{equation}
+Here, $\mathbf{b} = \mathbf{B}/B$.
+
+Free and bound (magnetisation and polarisation) currents are associated with a drift-kinetic particle. The free currents are found by using the particle displacement over the computational timestep using Esirkepov current deposition. That is, a current $J_{n+1/2}$ is found consistent with the particle displacement from $\mathbf{R}_n$ to $\mathbf{R}_{n-1/2}$. Bound currents are not calculated in the existing implementation of minepoch (for electromagnetic problems, or where the drift-kinetic species is not electrons, the bound currents are not generally negligible).
+
+The second order drift kinetic solve is an explicit midpoint method of the form
+\begin{itemize}
+\item
+  $\mathbf{Z}_{n+1}^0$ is found via an Euler step using the fields $\mathbf{B}_n,\mathbf{E}_n$.
+\item
+  $\mathbf{B}^0_{n+1},\mathbf{E}^0_{n+1}$ are found by evaluating the current due to the particles displacing from $\mathbf{R}_n$ to $\mathbf{R}_{n+1}^0$.
+\item
+  $\mathbf{Z}_{n+1}$ is found by evaluating the RHS of the Euler-Lagrange equations, estimating the midpoint $\mathbf{Z}_{n+1/2} = (\mathbf{Z}_n + \mathbf{Z}_{n+1}^0)/2$ and likewise the midpoint field values.
+\item
+  $\mathbf{B}_{n+1},\mathbf{E}_{n+1}$ are found by evaluating the current due to the particles displacing from $\mathbf{R}_n$ to $\mathbf{R}_{n+1}$.
+\end{itemize}
+
+Note that unlike in the standard-PIC method, all the particle and field attributes are stored at the same time-point, so the combination of drift-kinetics and substepping is second-order in time without further modification.
+
+\section{Low-noise PIC (M5) }
+
+The low-noise PIC method is documented in report 2047355-TN-01 and is not further discussed here.
+
+\section{Technical details}
+
+The initial version of the minepoch code implements the standard charge-conserving fully-electromagnetic PIC method. Some preparatory work was required to modularise the code in preparation for `advanced algorithm' implementation.
+
+The main work was to  split the particle push loop into several subroutines. In particular, the field evaluation and current deposition were extracted from the push routine. The interface is relatively simple, as all that is required is an field (and derivative) evaluation at specific position. We also pass a structure
+to allow temporary storage.
+
+This also allows simple implementation of other particle evolution equations (e.g. drift-kinetic) as well as the use of external field solvers.
+
+\bibliography{excal}
+
+\end{document}

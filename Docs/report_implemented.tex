@@ -50,6 +50,8 @@ Although correcting the currents to restore  second-order accuracy in time is po
   
 \subsection{Drift-kinetic species}
 
+We implement a minimal version of Drift-kinetics based on the long-wavelength general gyrokinetic formalism (the Lagrangian used to derive the Euler-Lagrange equations is eq. 9. of Ref. \cite{mcmillansharma}, with terms of order $\epsilon$ neglected). Users are expected to make sure (and possibly post-verify) that the drift-kinetic ordering is valid. For example, if the magnetic field strength is zero somewhere in the domain the ordering will break down and division-by-nearly-zero will occur; of course, for tokamak applications, this is not a problem.
+
 Drift-kinetic species with phase-space coordinates $\mathbf{Z}=(\mathbf{R},v_{||},\mu)$ follow the Euler-Lagrange equations
 \begin{equation}
   \frac{d \mathbf{R}}{dt} = \mathbf{b} v_{||}
@@ -73,11 +75,11 @@ The second order drift kinetic solve is an explicit midpoint method of the form
 \item
   $\mathbf{Z}_{n+1}^0$ is found via an Euler step using the fields $\mathbf{B}_n,\mathbf{E}_n$.
 \item
-  $\mathbf{B}^0_{n+1},\mathbf{E}^0_{n+1}$ are found by evaluating the current due to the particles displacing from $\mathbf{R}_n$ to $\mathbf{R}_{n+1}^0$.
+  $\mathbf{B}^0_{n+1},\mathbf{E}^0_{n+1}$ are found by stepping Maxwell's laws, evaluating the current due to the particles displacing from $\mathbf{R}_n$ to $\mathbf{R}_{n+1}^0$ using the Esirkepov method (as per standard PIC).
 \item
   $\mathbf{Z}_{n+1}$ is found by evaluating the RHS of the Euler-Lagrange equations, estimating the midpoint $\mathbf{Z}_{n+1/2} = (\mathbf{Z}_n + \mathbf{Z}_{n+1}^0)/2$ and likewise the midpoint field values.
 \item
-  $\mathbf{B}_{n+1},\mathbf{E}_{n+1}$ are found by evaluating the current due to the particles displacing from $\mathbf{R}_n$ to $\mathbf{R}_{n+1}$.
+  $\mathbf{B}_{n+1},\mathbf{E}_{n+1}$ are found by stepping Maxwell's laws, evaluating the current due to the particles displacing from $\mathbf{R}_n$ to $\mathbf{R}_{n+1}$.
 \end{itemize}
 
 Note that unlike in the standard-PIC method, all the particle and field attributes are stored at the same time-point, so the combination of drift-kinetics and substepping is second-order in time without further modification.
@@ -90,10 +92,12 @@ The low-noise PIC method is documented in report 2047355-TN-01 and is not furthe
 
 The initial version of the minepoch code implements the standard charge-conserving fully-electromagnetic PIC method. Some preparatory work was required to modularise the code in preparation for `advanced algorithm' implementation.
 
-The main work was to  split the particle push loop into several subroutines. In particular, the field evaluation and current deposition were extracted from the push routine. The interface is relatively simple, as all that is required is an field (and derivative) evaluation at specific position. We also pass a structure
+The main work was to  split the particle push loop into several subroutines. In particular, the field evaluation and current deposition were extracted from the push routine. The field interface is relatively simple, and consists of a pair of subroutines; a field (and derivative) evaluation at specific position, and a current deposition subroutine that take the particle initial and final positions as arguments. We also pass a structure
 to allow temporary storage.
 
 This also allows simple implementation of other particle evolution equations (e.g. drift-kinetic) as well as the use of external field solvers.
+
+The drift-kinetic solver uses the first and second element in the momentum array to store $v_{||}$ and $\mu$ respectively; the transformation to these velocity-space coordinates is performed after the particle loading. 
 
 \bibliography{excal}
 

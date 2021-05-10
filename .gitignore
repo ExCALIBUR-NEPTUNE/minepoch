@@ -1,0 +1,19 @@
+# Intermediate doc files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+
+# Object files
+obj/
+
+# Executable
+bin/
+
+# Commit file
+src/COMMIT
+
+# Editor related files
+*.*~

@@ -116,6 +116,13 @@ CONTAINS
              end do
           end do
        END IF
+    CASE ('drift_kin_default')
+       ex = 0.0_num
+       ey = 0.0_num
+       ez = 0.0_num
+       bx = 0.0_num
+       by = 0.0_num
+       bz = 1.0_num
     CASE default
     END SELECT
   END SUBROUTINE fields_initialise

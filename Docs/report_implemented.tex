@@ -12,7 +12,7 @@
 
 This describes certain new features added to the minepoch code as part of the NEPTUNE project (Milestones 4 and 5 of the Particles subproject).
 
-The minepoch code is designed as a proxy app for computational performance testing with a minimal codebase, and therefore does not contain a full input deck parser. Certain parameters may be adjusted via the input deck (FORTRAN namelist), but more complex modifications require hard-coded setup subroutines; there is a string-valued namelist parameter 'problem' that selects which setup subroutine is used. 
+The minepoch code is designed as a proxy app for computational performance testing with a minimal codebase, and therefore does not contain a full input deck parser. Certain parameters may be adjusted via the input deck (FORTRAN namelist), but more complex modifications require hard-coded setup subroutines; there is a string-valued namelist parameter 'problem' that selects which setup subroutine is used.
 
 See the README file for a description of how to run relevant testcases.
 
@@ -40,14 +40,14 @@ In cases where the timestep limitation is due to particle gyration, a simple sub
 \begin{equation}
    (p_{t + (2 n - 3) H/2},x_{ t + (2 n -2 ) H} ) \rightarrow (p_{t + (2 n - 1) H/2},x_{t- (2 n -2 )H/2})
 \end{equation}
-with overall effect of $N$ substeps 
+with overall effect of $N$ substeps
   \begin{equation}
    (p_{t +  H/2},x_{ t} ) \rightarrow (p_{t + h + H/2},x_{t + h}).
-\end{equation} 
+\end{equation}
   In the simple substepping currently implemented in minepoch, the current is calculated using these endpoints, so that the field is no longer time-centred. This reduces the time-accuracy of the scheme to first order for time-varying $E$ and $B$ fields (for particle tracing in static fields the algorithm is second order).
 
-Although correcting the currents to restore  second-order accuracy in time is possible, the main purpose of substepping is in conjunction with an implicit field solver. 
-  
+Although correcting the currents to restore  second-order accuracy in time is possible, the main purpose of substepping is in conjunction with an implicit field solver.
+
 \subsection{Drift-kinetic species}
 
 We implement a minimal version of Drift-kinetics based on the long-wavelength general gyrokinetic formalism (the Lagrangian used to derive the Euler-Lagrange equations is eq. 9. of Ref. \cite{mcmillansharma}, with terms of order $\epsilon$ neglected). Users are expected to make sure (and possibly post-verify) that the drift-kinetic ordering is valid. For example, if the magnetic field strength is zero somewhere in the domain the ordering will break down and division-by-nearly-zero will occur; of course, for tokamak applications, this is not a problem.
@@ -60,7 +60,7 @@ Drift-kinetic species with phase-space coordinates $\mathbf{Z}=(\mathbf{R},v_{||
   + \frac{\mu B}{2 q B^3} \mathbf{B} \times \nabla B,
 \end{equation}
 \begin{equation}
-  m \frac{d v_{||}}{dt} = - \mathbf{b} . ( e \nabla \phi + \mu \nabla B )  
+  m \frac{d v_{||}}{dt} = - \mathbf{b} . ( e \nabla \phi + \mu \nabla B )
 \end{equation}
 and
 \begin{equation}
@@ -97,7 +97,7 @@ to allow temporary storage.
 
 This also allows simple implementation of other particle evolution equations (e.g. drift-kinetic) as well as the use of external field solvers.
 
-The drift-kinetic solver uses the first and second element in the momentum array to store $v_{||}$ and $\mu$ respectively; the transformation to these velocity-space coordinates is performed after the particle loading. 
+The drift-kinetic solver uses the first and second element in the momentum array to store $v_{||}$ and $\mu$ respectively; the transformation to these velocity-space coordinates is performed after the particle loading.
 
 \bibliography{excal}
 

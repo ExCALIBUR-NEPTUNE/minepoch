@@ -1222,11 +1222,10 @@ CONTAINS
     TYPE(particle), POINTER, INTENT(IN) :: current
     REAL(num), INTENT(IN) :: mass
     REAL(num) :: f0
-    REAL(num) :: density, xsc
+    REAL(num) :: density
     REAL(num) :: f0_exponent, norm, two_kb_mass, two_pi_kb_mass3
     REAL(num), DIMENSION(3) :: tl, dl
     TYPE(particle_species),  INTENT(INOUT) :: species
-    INTEGER :: i,ix,ix0
     
     IF (species%use_deltaf) THEN
        two_kb_mass = 2.0_num * kb * mass

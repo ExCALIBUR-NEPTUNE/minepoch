@@ -62,14 +62,6 @@ CONTAINS
     ! Estimate of rho(t+1.5*dt) rather than calculating J directly
     ! This gives exact charge conservation on the grid
 
-    ! Contains the integer cell position of the particle in x, y, z
-    INTEGER :: cell_x1, cell_x2, cell_x3
-    INTEGER :: cell_y1, cell_y2, cell_y3
-    INTEGER :: cell_z1, cell_z2, cell_z3
-
-    ! Xi (space factor see page 38 in manual)
-    ! The code now uses gx and hx instead of xi0 and xi1
-
     ! J from a given particle, can be spread over up to 3 cells in
     ! Each direction due to parabolic weighting. We allocate 4 or 5
     ! Cells because the position of the particle at t = t+1.5dt is not
@@ -77,35 +69,16 @@ CONTAINS
     ! Improved, but at the moment, this is just a straight copy of
     ! The core of the PSC algorithm
     INTEGER, PARAMETER :: sf0 = sf_min, sf1 = sf_max
-    REAL(num) :: jxh
-    REAL(num), DIMENSION(sf0-1:sf1+1) :: jyh
-    REAL(num), DIMENSION(sf0-1:sf1+1,sf0-1:sf1+1) :: jzh
 
     ! Properties of the current particle. Copy out of particle arrays for speed
-    REAL(num) :: part_x, part_y, part_z
     REAL(num) :: part_ux, part_uy, part_uz
     REAL(num) :: part_q, part_mc, ipart_mc, part_weight
-
-    ! Contains the floating point version of the cell number (never actually
-    ! used)
-    REAL(num) :: cell_x_r, cell_y_r, cell_z_r
-
-    ! The fraction of a cell between the particle position and the cell boundary
-    REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
 
     ! Weighting factors as Eqn 4.77 page 25 of manual
     ! Eqn 4.77 would be written as
     ! F(j-1) * gmx + F(j) * g0x + F(j+1) * gpx
     ! Defined at the particle position
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
-
-    ! Defined at the particle position - 0.5 grid cell in each direction
-    ! This is to deal with the grid stagger
-    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
-
-    ! Fields at particle location
-    REAL(num) :: ex_part, ey_part, ez_part, bx_part, by_part, bz_part
-
     ! P+, P- and Tau variables from Boris1970, page27 of manual
     REAL(num) :: uxp, uxm, uyp, uym, uzp, uzm
     REAL(num) :: tau, taux, tauy, tauz, taux2, tauy2, tauz2
@@ -113,21 +86,12 @@ CONTAINS
     ! charge to mass ratio modified by normalisation
     REAL(num) :: cmratio, ccmratio
 
-    ! Used by J update
-    INTEGER :: xmin, xmax, ymin, ymax, zmin, zmax
-    REAL(num) :: wx, wy, wz
-
     ! Temporary variables
     REAL(num) :: idt, dto2, dtco2
-    REAL(num) :: fcx, fcy, fcz, fjx, fjy, fjz
     REAL(num) :: root, dtfac, gamma, third
     REAL(num) :: delta_x, delta_y, delta_z
-    REAL(num) :: xfac1, xfac2, yfac1, yfac2, zfac1, zfac2
-    REAL(num) :: gz_iz, hz_iz, hygz, hyhz, hzyfac1, hzyfac2, yzfac
-    INTEGER :: ispecies, ix, iy, iz, dcellx, dcelly, dcellz, cx, cy, cz
+    INTEGER :: ispecies
     INTEGER(i8) :: ipart
-    ! Particle weighting multiplication factor
-    REAL(num) :: cf2
     REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
     INTEGER :: isubstep
     TYPE(particle), POINTER :: current, next

@@ -21,14 +21,14 @@ def get_energies(fname):
     return times, particle_energies, field_energies
 
 
-def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False):
+def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False, **kwargs):
     # Read energies from file. Ignore particle energy
     times, _, energies = get_energies(fname)
 
     if dbg:
         print(np.max(energies))
 
-    plt.plot(times * xscale, energies)
+    plt.plot(times * xscale, energies, **kwargs)
 
     if ylog:
         plt.yscale('log')

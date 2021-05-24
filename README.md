@@ -56,7 +56,8 @@ the directory `minepoch_py`.
  - Although minepoch only includes a small subset of the functionality of the original EPOCH code, the
    user manual for EPOCH is included within each release.
  - The EPOCH code [paper](http://dx.doi.org/10.1088/0741-3335/57/11/113001) contains a review of the
-   core PIC algorithm used in minepoch and EPOCH.
+   core PIC algorithm used in minepoch and EPOCH. The EPOCH code may be downloaded from the [repository](https://github.com/Warwick-Plasma/epoch)
+   and the user/developer manuals are [here](https://github.com/Warwick-Plasma/EPOCH_manuals).
 
 ## Any problems?
 

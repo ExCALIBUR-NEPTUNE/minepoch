@@ -25,7 +25,7 @@ def parse_arguments():
 
     group.add_argument(
         "--growth_rate",
-        default=0.05,
+        default=0.06,
         type=float,
         help="Allowed fractional error growth rate",
         nargs="?",

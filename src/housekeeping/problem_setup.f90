@@ -123,6 +123,24 @@ CONTAINS
        bx = 0.0_num
        by = 0.0_num
        bz = 1.0_num
+    CASE ('fastwave')
+       ! B field in the z-direction with a strength modulation.
+       ex = 0.0_num
+       ey = 0.0_num
+       ez = 0.0_num
+       bx = 0.0_num
+       by = 0.0_num
+       bz = 0.0_num
+       do i=1-ng,nx+ng
+          do j=1-ng,ny+ng
+             do k=1-ng,nz+ng
+                !Correct offset for bz, is there a variable 
+                ! storing offset per field/direction?
+                xp = x_grid_min_local+(i-0.5_num)*dx
+                bz(i,j,k) = 10.0*(1.0 + 0.1*cos(2*pi*xp/x_max))
+             end do
+          end do
+       end do
     CASE default
     END SELECT
   END SUBROUTINE fields_initialise

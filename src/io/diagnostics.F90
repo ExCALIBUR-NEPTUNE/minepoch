@@ -146,8 +146,34 @@ CONTAINS
 
   END SUBROUTINE create_full_timestring
 
+  SUBROUTINE naiive_fieldout
+    LOGICAL, SAVE :: first = .true.
+    INTEGER :: i,j,k
 
-
+    IF(rank/=0) RETURN
+    
+    IF(first) THEN
+       OPEN(unit = 411,file="field")
+       first=.false.
+    END IF
+    
+    do i=1-ng,nx+ng
+      !  do j=1-ng,ny+ng
+      !    do k=1-ng,nz+ng
+             do j=1,1
+             do k=1,1
+             !Correct offset for bz, is there a variable 
+             ! storing offset per field/direction?
+             !xp = x_grid_min_local+(i-0.5_num)*dx
+             !bz(i,j,k) = cos(xp)
+             WRITE (411,*) time,i,j,k,bx(i,j,k),by(i,j,k),bz(i,j,k),   &
+                     &           ex(i,j,k),ey(i,j,k),ez(i,j,k)
+          end do
+       end do
+    end do
+        
+  END SUBROUTINE naiive_fieldout
+  
   SUBROUTINE time_history(step)   ! step = step index
 
     INTEGER, INTENT(INOUT) :: step
@@ -178,7 +204,7 @@ CONTAINS
     ENDIF
 
     IF (MOD(step, dump_frequency) /= 0) RETURN
-
+    
     IF (timer_collect) THEN
       IF (timer_walltime < 0.0_num) THEN
         CALL timer_start(c_timer_io)
@@ -213,6 +239,8 @@ CONTAINS
       IF (do_flush) CLOSE(unit=fu)
     ENDIF
 
+    CALL naiive_fieldout()
+    
   END SUBROUTINE time_history
 
 END MODULE diagnostics

@@ -179,11 +179,10 @@ CONTAINS
     REAL(num), DIMENSION(-2:,-2:,-2:), INTENT(INOUT) :: density
     TYPE(particle_species), POINTER :: species
     TYPE(particle_list), POINTER :: partlist
-    TYPE(particle), POINTER :: current, next
+    TYPE(particle), POINTER :: current
     REAL(num), INTENT(INOUT) :: density_min, density_max
     INTEGER(i8) :: num_valid_cells_local, num_valid_cells_global
     INTEGER(i8) :: npart_per_cell, npart_left
-    INTEGER(i8) :: cell_part_cnt
     REAL(num) :: density_total, density_total_global, density_average
     REAL(num) :: npart_per_cell_average
     INTEGER(i8) :: npart_this_proc_new, ipart, npart_this_species

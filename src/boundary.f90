@@ -851,8 +851,8 @@ CONTAINS
 
   SUBROUTINE efield_bcs(ex, ey, ez, ng)
 
-    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: ex, ey, ez
     INTEGER, INTENT(IN) :: ng
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: ex, ey, ez
     INTEGER :: i
 
     ! These are the MPI boundaries
@@ -906,8 +906,8 @@ CONTAINS
 
   SUBROUTINE bfield_bcs(bx, by, bz, ng, mpi_only)
 
-    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: bx, by, bz
     INTEGER, INTENT(IN) :: ng
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: bx, by, bz
     LOGICAL, INTENT(IN) :: mpi_only
     INTEGER :: i
 
@@ -967,8 +967,8 @@ CONTAINS
 
   SUBROUTINE bfield_final_bcs(bx, by, bz, ng)
 
-    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: bx, by, bz
     INTEGER, INTENT(IN) :: ng
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(INOUT) :: bx, by, bz
     INTEGER :: i
 
     CALL bfield_bcs(bx, by, bz, ng, .FALSE.)

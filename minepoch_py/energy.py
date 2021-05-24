@@ -58,6 +58,8 @@ def energy_check(fname='Data/output.dat', tolerance=None, label=None,
         if label is not None:
             plt.legend()
 
+        plt.tight_layout()
+
         if savefig:
             plt.savefig('energy_conservation.png')
 

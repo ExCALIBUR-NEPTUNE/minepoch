@@ -41,18 +41,18 @@ jobs:
           cp Data/two_stream.deck Data/input.deck
           ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python3 minepoch_py/test.py
+          python3 minepoch_py/test.py --disable_plots
 
       - name: Test-substep
         run: |
           cp Data/two_stream_substep.deck Data/input.deck
           ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python3 minepoch_py/test.py --energy_conservation=0.006
+          python3 minepoch_py/test.py --energy_conservation=0.006 --disable_plots
 
       - name: Test-Parallel
         run: |
           cp Data/two_stream.deck Data/input.deck
           mpirun -np 2 ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          python3 minepoch_py/test.py
+          python3 minepoch_py/test.py --disable_plots

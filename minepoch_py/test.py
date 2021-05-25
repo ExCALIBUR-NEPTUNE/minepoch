@@ -25,18 +25,23 @@ def parse_arguments():
 
     group.add_argument(
         "--growth_rate",
-        default=0.05,
+        default=0.06,
         type=float,
         help="Allowed fractional error growth rate",
         nargs="?",
     )
 
+    parser.add_argument("--disable_plots", help="Disable plot generation",
+                        action="store_true")
+
     return parser.parse_args()
 
 
-def run_tests(plot=True, savefig=True):
+def run_tests(savefig=True):
 
     options = parse_arguments()
+
+    plot = not options.disable_plots
 
     energy_error = energy_check(tolerance=options.energy_conservation,
                                 plot=plot, savefig=savefig)

@@ -29,8 +29,9 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
         times, _, fe = get_energies(fname)
         # Estimate end of linear growth
         end = np.where(fe > np.max(fe) * 0.99)[0][0]
-        # Ignore first third
-        start = end // 3
+        # Measure growth rate over 10 plasma frequencies
+        start = np.argmin(np.abs(times - times[end] + 10 / omega))
+
         if plot:
             # Show region of interest
             plt.gca().axvspan(times[start] * omega, times[end] * omega,
@@ -46,7 +47,7 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
         popt, pcov = curve_fit(curve, times_linear, np.log(energy_linear))
         if plot:
             # Plot linear fit, shifted slightly vertically
-            fit = 5 * np.exp(popt[1]) * np.exp(times_linear * popt[0])
+            fit = 2 * np.exp(popt[1]) * np.exp(times_linear * popt[0])
             plt.plot(times_linear, fit, color='green',
                      label='Observed (%.4F)' % popt[0])
 

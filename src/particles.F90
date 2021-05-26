@@ -13,6 +13,7 @@ MODULE particles
   END TYPE fields_eval_tmps
 
   ! Some numerical factors needed for various particle-fields routines.
+  REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
   REAL(num) :: i_yz, i_xz, i_xy ! can't store these as particle steps may vary
   REAL(num) :: idx, idy, idz
 
@@ -58,7 +59,6 @@ CONTAINS
 
     INTEGER :: ispecies, isubstep
     TYPE(particle_species), POINTER :: species, next_species
-    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     ! Reset current arrays
     jx = 0.0_num
@@ -139,7 +139,6 @@ CONTAINS
     REAL(num) :: root, dtfac, gamma
     REAL(num) :: delta_x, delta_y, delta_z
     INTEGER(i8) :: ipart
-    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
     TYPE(particle), POINTER :: current, next
     TYPE(fields_eval_tmps) :: st_half
     REAL(num), DIMENSION(3) :: part_pos_t1p5, pos_half, Bvec, Evec
@@ -509,7 +508,6 @@ CONTAINS
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
     REAL(num) :: idx,idy,idz
-    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     INTEGER :: cello_x,cello_y,cello_z
     INTEGER :: xp,yp,zp !Keep track of which derivative is being taken.
@@ -769,7 +767,6 @@ CONTAINS
     TYPE(fields_eval_tmps), INTENT(INOUT) :: st
     REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
     REAL(num), DIMENSION(3,3), INTENT(INOUT), OPTIONAL :: btens
-    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     ! Fields at particle location
     REAL(num) :: ex_part, ey_part, ez_part, bx_part, by_part, bz_part

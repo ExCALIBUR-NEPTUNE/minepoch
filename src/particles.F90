@@ -6,24 +6,24 @@ MODULE particles
 
   IMPLICIT NONE
 
-!Store some pieces of this to speed up the current evaluation.
-TYPE fields_eval_tmps
+  !Store some pieces of this to speed up the current evaluation.
+  TYPE fields_eval_tmps
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
     INTEGER :: cell_x1, cell_y1, cell_z1
- END TYPE fields_eval_tmps
+  END TYPE fields_eval_tmps
 
-! Some numerical factors needed for various particle-fields routines.
-    REAL(num) :: i_yz, i_xz, i_xy ! can't store these as particle steps may vary
-    REAL(num) :: idx, idy, idz
+  ! Some numerical factors needed for various particle-fields routines.
+  REAL(num) :: i_yz, i_xz, i_xy ! can't store these as particle steps may vary
+  REAL(num) :: idx, idy, idz
 
+  ! For now, fluid equations for a single species
+  ! density is mass density, p_fluid is momentum density
+  REAL(num), DIMENSION(:), ALLOCATABLE :: dens_fluid_next, forcet, dens_fluid
+  REAL(num), DIMENSION(:), ALLOCATABLE :: dens_fluid0, p_fluid0
+  REAL(num), DIMENSION(:), ALLOCATABLE :: p_fluid_next, p_fluid, pressuret
+  REAL(num) :: dt_fluid, dx_fluid
+  INTEGER :: nx_fluid
 
-    ! For now, fluid equations for a single species
-    ! density is mass density, p_fluid is momentum density
-    REAL(num), DIMENSION(:), ALLOCATABLE :: dens_fluid_next, forcet, dens_fluid
-    REAL(num), DIMENSION(:), ALLOCATABLE :: dens_fluid0, p_fluid0
-    REAL(num), DIMENSION(:), ALLOCATABLE :: p_fluid_next, p_fluid, pressuret
-    REAL(num) :: dt_fluid, dx_fluid
-    INTEGER :: nx_fluid
 CONTAINS
 
   SUBROUTINE push_particles_2ndstep
@@ -116,7 +116,7 @@ CONTAINS
     REAL(num) :: cmratio, ccmratio
 
     ! Temporary variables
-    REAL(num) :: root, dtfac, gamma, third
+    REAL(num) :: root, dtfac, gamma
     REAL(num) :: delta_x, delta_y, delta_z
     INTEGER(i8) :: ipart
     REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
@@ -149,7 +149,6 @@ CONTAINS
     dto2 = dt / 2.0_num
     dtco2 = c * dto2
     dtfac = 0.5_num * dt * fac
-    third = 1.0_num / 3.0_num
 
     i_yz = idy * idz * fac
     i_xz = idx * idz * fac

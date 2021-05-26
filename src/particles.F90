@@ -6,6 +6,10 @@ MODULE particles
 
   IMPLICIT NONE
 
+  PRIVATE
+  PUBLIC :: push_particles, push_particles_2ndstep
+  PUBLIC :: setup_fluid, get_fields_at_point
+
   !Store some pieces of this to speed up the current evaluation.
   TYPE fields_eval_tmps
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz

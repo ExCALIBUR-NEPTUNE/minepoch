@@ -58,6 +58,7 @@ CONTAINS
 
     INTEGER :: ispecies, isubstep
     TYPE(particle_species), POINTER :: species, next_species
+    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     ! Reset current arrays
     jx = 0.0_num
@@ -68,6 +69,15 @@ CONTAINS
     jy_d = 0.0_num
     jz_d = 0.0_num
 
+    ! Unvarying multiplication factors
+    idx = 1.0_num / dx
+    idy = 1.0_num / dy
+    idz = 1.0_num / dz
+
+    ! Only used by current deposition
+    i_yz = idy * idz * fac
+    i_xz = idx * idz * fac
+    i_xy = idx * idy * fac
 
     next_species => species_list
     DO ispecies = 1, n_species
@@ -143,18 +153,10 @@ CONTAINS
     gy = 0.0_num
     gz = 0.0_num
 
-    ! Unvarying multiplication factors
-    idx = 1.0_num / dx
-    idy = 1.0_num / dy
-    idz = 1.0_num / dz
     idt = 1.0_num / dt
     dto2 = dt / 2.0_num
     dtco2 = c * dto2
     dtfac = 0.5_num * dt * fac
-
-    i_yz = idy * idz * fac
-    i_xz = idx * idz * fac
-    i_xy = idx * idy * fac
     
     idt = 1.0_num / dt_sub
     idt0 = 1.0_num / dt

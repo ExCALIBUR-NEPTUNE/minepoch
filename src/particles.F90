@@ -59,6 +59,16 @@ CONTAINS
     INTEGER :: ispecies, isubstep
     TYPE(particle_species), POINTER :: species, next_species
 
+    ! Reset current arrays
+    jx = 0.0_num
+    jy = 0.0_num
+    jz = 0.0_num
+
+    jx_d = 0.0_num
+    jy_d = 0.0_num
+    jz_d = 0.0_num
+
+
     next_species => species_list
     DO ispecies = 1, n_species
        species => next_species
@@ -128,14 +138,6 @@ CONTAINS
     REAL(num) :: idt, dto2, dtco2, idt0, dt_sub
 
     dt_sub = dt / species%nsubstep
-
-    jx = 0.0_num
-    jy = 0.0_num
-    jz = 0.0_num
-
-    jx_d = 0.0_num
-    jy_d = 0.0_num
-    jz_d = 0.0_num
 
     gx = 0.0_num
     gy = 0.0_num

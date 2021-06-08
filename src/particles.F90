@@ -11,12 +11,6 @@ MODULE particles
   PUBLIC :: push_particles, push_particles_2ndstep
   PUBLIC :: setup_fluid, get_fields_at_point
 
-  !Store some pieces of this to speed up the current evaluation.
-  TYPE fields_eval_tmps
-    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
-    INTEGER :: cell_x1, cell_y1, cell_z1
-  END TYPE fields_eval_tmps
-
   ! Some numerical factors needed for various particle-fields routines.
   REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
   REAL(num) :: i_yz, i_xz, i_xy ! can't store these as particle steps may vary

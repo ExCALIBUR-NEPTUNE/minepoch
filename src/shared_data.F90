@@ -242,6 +242,14 @@ MODULE shared_data
     REAL(num) :: density_max
   END TYPE particle_species
 
+  ! Store some pieces of this to speed up the current evaluation.
+  TYPE fields_eval_tmps
+
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    INTEGER :: cell_x1, cell_y1, cell_z1
+
+  END TYPE fields_eval_tmps
+
   INTEGER :: deck_state
 
   REAL(num) :: time_start, time_stop

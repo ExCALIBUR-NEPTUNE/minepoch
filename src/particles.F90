@@ -256,15 +256,20 @@ CONTAINS
         weight_back = current%pvol * f0(species, current, current%mass)
       END IF
 
-      ! Now advance to t+1.5dt to calculate current. This is detailed in
-      ! the manual between pages 37 and 41. The version coded up looks
-      ! completely different to that in the manual, but is equivalent.
-      ! Use t+1.5 dt so that can update J to t+dt at 2nd order
-      part_pos_t1p5 = current%part_pos + (/ delta_x, delta_y, delta_z /)
-      ! Current deposition uses position at t+0.5dt and t+1.5dt, particle
-      ! assumed to travel in direct line between these locations. Second order
-      ! in time for evaluation of current at t+dt
-      CALL current_deposition_esirkepov(st_half, part_pos_t1p5, (part_weight*part_qfac), jx, jy, jz)
+      IF (use_esirkepov) THEN
+        ! Now advance to t+1.5dt to calculate current. This is detailed in
+        ! the manual between pages 37 and 41. The version coded up looks
+        ! completely different to that in the manual, but is equivalent.
+        ! Use t+1.5 dt so that can update J to t+dt at 2nd order
+        part_pos_t1p5 = current%part_pos + (/ delta_x, delta_y, delta_z /)
+        ! Current deposition uses position at t+0.5dt and t+1.5dt, particle
+        ! assumed to travel in direct line between these locations. Second order
+        ! in time for evaluation of current at t+dt
+        CALL current_deposition_esirkepov(st_half, part_pos_t1p5, (part_weight*part_qfac), jx, jy, jz)
+      ELSE
+        ! TODO
+        STOP
+      END IF
 
       IF (species%solve_fluid) THEN
         part_v = (/part_ux, part_uy,part_uz/)

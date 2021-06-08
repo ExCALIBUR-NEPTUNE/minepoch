@@ -305,6 +305,9 @@ MODULE shared_data
 
   LOGICAL :: use_random_seed = .FALSE.
 
+  ! Control use of Esirkepov (charge conserving) current deposition
+  LOGICAL :: use_esirkepov = .TRUE.
+
   REAL(num) :: dt, t_end, time, dt_multiplier, dt_laser, dt_plasma_frequency
   REAL(num) :: cfl
   ! x_min is the left-hand edge of the simulation domain as specified in

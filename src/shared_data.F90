@@ -215,6 +215,7 @@ MODULE shared_data
     TYPE(particle_list) :: attached_list
     LOGICAL :: immobile
     LOGICAL :: is_driftkinetic
+    LOGICAL :: is_implicit = .FALSE.
     LOGICAL :: use_deltaf  = .FALSE.
     LOGICAL :: solve_fluid = .FALSE.
     INTEGER :: nsubstep = 1

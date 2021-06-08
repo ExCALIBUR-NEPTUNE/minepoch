@@ -93,6 +93,9 @@ CONTAINS
 
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk0(species)
+       ELSE IF (species%is_implicit) THEN
+          ! TODO - Need new particle push
+          CALL push_particles_lorentz_split(species)
        ELSE
           DO isubstep=1,species%nsubstep
              CALL push_particles_lorentz_split(species)

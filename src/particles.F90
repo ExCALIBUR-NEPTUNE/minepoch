@@ -264,7 +264,7 @@ CONTAINS
       ! Current deposition uses position at t+0.5dt and t+1.5dt, particle
       ! assumed to travel in direct line between these locations. Second order
       ! in time for evaluation of current at t+dt
-      CALL current_deposition_store(st_half,part_pos_t1p5,(part_weight*part_qfac),.false.)
+      CALL current_deposition_esirkepov(st_half, part_pos_t1p5, (part_weight*part_qfac), .FALSE.)
 
       IF (species%solve_fluid) THEN
         part_v = (/part_ux, part_uy,part_uz/)
@@ -348,8 +348,7 @@ CONTAINS
          !Do current deposition using lowest order current. (current at t_{N+1})
          !Before we apply this current, E+B need to be stored in a temporary;
          !this is the lowest order current.
-         CALL current_deposition_store(st_0,pos_0,(part_weight*part_qfac),.true.)
-
+         CALL current_deposition_esirkepov(st_0, pos_0, (part_weight*part_qfac), .TRUE.)
 
          current => next
       ENDDO
@@ -415,7 +414,7 @@ CONTAINS
          current%part_p(1:2)   = (/ part_u, part_mu /)
 
          !This is the current between step N+1/2 and N+3/2 so 2nd order at N+1
-         CALL current_deposition_pos(pos_0,current%part_pos,(part_weight*part_q),.true.)
+         CALL current_deposition_esirkepov(pos_0, current%part_pos, (part_weight*part_q), .TRUE.)
 
          current => next
       ENDDO

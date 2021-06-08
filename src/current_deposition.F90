@@ -5,7 +5,12 @@ MODULE current_deposition
 
   IMPLICIT NONE
 
+  INTERFACE current_deposition_esirkepov
+    MODULE PROCEDURE current_deposition_esirkepov_pos, current_deposition_esirkepov_store
+  END INTERFACE current_deposition_esirkepov
+
   PRIVATE :: calc_stdata
+  PRIVATE :: current_deposition_esirkepov_pos, current_deposition_esirkepov_store
 
   REAL(num), PRIVATE :: idx, idy, idz
   REAL(num), PRIVATE :: i_yz, i_xz, i_xy
@@ -30,23 +35,24 @@ CONTAINS
 
   ! Do current deposition of particle moving along straight line
   ! from pos0 to pos1, with chargeweight = weight*charge
-  SUBROUTINE current_deposition_pos(pos0, pos1, chargeweight, drift_switch)
+  SUBROUTINE current_deposition_esirkepov_pos(pos0, pos1, chargeweight, drift_switch)
+
     REAL(num), DIMENSION(3), INTENT(INOUT) :: pos0,pos1
     REAL(num), INTENT(IN) :: chargeweight
     LOGICAL, INTENT(IN) :: drift_switch
-
     TYPE(fields_eval_tmps)  :: st0
 
     CALL calc_stdata(pos0,st0)
-    CALL current_deposition_store(st0, pos1, chargeweight, drift_switch)
+    CALL current_deposition_esirkepov_store(st0, pos1, chargeweight, drift_switch)
 
-  END SUBROUTINE current_deposition_pos
+  END SUBROUTINE current_deposition_esirkepov_pos
 
 
 
   ! Do current deposition, reusing some precalculated data (in st)
   ! Particle has moved from pos0 (data stored in st) to pos
-  SUBROUTINE current_deposition_store(st,pos,chargeweight,drift_switch)
+  SUBROUTINE current_deposition_esirkepov_store(st, pos, chargeweight, drift_switch)
+
     REAL(num), DIMENSION(3), INTENT(INOUT) :: pos
     TYPE(fields_eval_tmps), INTENT(INOUT)  :: st
     REAL(num), INTENT(IN) :: chargeweight
@@ -182,7 +188,7 @@ CONTAINS
       END DO
     END DO
 
-  END SUBROUTINE current_deposition_store
+  END SUBROUTINE current_deposition_esirkepov_store
 
 
 

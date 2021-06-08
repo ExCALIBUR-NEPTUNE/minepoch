@@ -11,10 +11,11 @@ MODULE particles
   PRIVATE
   PUBLIC :: push_particles, push_particles_2ndstep
   PUBLIC :: setup_fluid
+  PUBLIC :: setup_particle_push
 
   ! Some numerical factors needed for various particle-fields routines.
-  REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
-  REAL(num) :: idx, idy, idz
+  REAL(num), PARAMETER, PRIVATE :: fac = (1.0_num / 24.0_num)**c_ndims
+  REAL(num), PRIVATE :: idx, idy, idz
 
   ! For now, fluid equations for a single species
   ! density is mass density, p_fluid is momentum density
@@ -25,6 +26,21 @@ MODULE particles
   INTEGER :: nx_fluid
 
 CONTAINS
+
+  ! Initialise unvarying module variables
+  SUBROUTINE setup_particle_push
+
+    ! Unvarying multiplication factors
+    idx = 1.0_num / dx
+    idy = 1.0_num / dy
+    idz = 1.0_num / dz
+
+    ! Now initialise current depositon module
+    CALL setup_current_deposition
+
+  END SUBROUTINE setup_particle_push
+
+
 
   SUBROUTINE push_particles_2ndstep
     TYPE(particle_species), POINTER :: species, next_species
@@ -67,11 +83,6 @@ CONTAINS
     jx_d = 0.0_num
     jy_d = 0.0_num
     jz_d = 0.0_num
-
-    ! Unvarying multiplication factors
-    idx = 1.0_num / dx
-    idy = 1.0_num / dy
-    idz = 1.0_num / dz
 
     next_species => species_list
     DO ispecies = 1, n_species
@@ -150,7 +161,7 @@ CONTAINS
     dto2 = dt / 2.0_num
     dtco2 = c * dto2
     dtfac = 0.5_num * dt * fac
-    
+
     idt = 1.0_num / dt_sub
     idt0 = 1.0_num / dt
     dto2 = dt_sub / 2.0_num

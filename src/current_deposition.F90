@@ -5,7 +5,26 @@ MODULE current_deposition
 
   IMPLICIT NONE
 
+  REAL(num), PRIVATE :: idx, idy, idz
+  REAL(num), PRIVATE :: i_yz, i_xz, i_xy
+
 CONTAINS
+
+  SUBROUTINE setup_current_deposition
+
+    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
+
+    idx = 1.0_num / dx
+    idy = 1.0_num / dy
+    idz = 1.0_num / dz
+
+    i_yz = idy * idz * fac
+    i_xz = idx * idz * fac
+    i_xy = idx * idy * fac
+
+  END SUBROUTINE setup_current_deposition
+
+
 
   ! Utility routine for calculating cell offsets and weights
   ! at a position.
@@ -18,12 +37,6 @@ CONTAINS
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
     REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
     REAL(num) :: cf2
-    REAL(num) :: idx, idy, idz
-
-    ! TODO - These should be private module variables
-    idx = 1.0_num / dx
-    idy = 1.0_num / dy
-    idz = 1.0_num / dz
 
     part_x = pos(1) - x_grid_min_local
     part_y = pos(2) - y_grid_min_local
@@ -69,8 +82,6 @@ CONTAINS
 
   END SUBROUTINE calc_stdata
 
-
-
   ! Do current deposition of particle moving along straight line
   ! from pos0 to pos1, with chargeweight = weight*charge
   SUBROUTINE current_deposition_pos(pos0, pos1, chargeweight, drift_switch)
@@ -94,8 +105,6 @@ CONTAINS
     TYPE(fields_eval_tmps), INTENT(INOUT)  :: st
     REAL(num), INTENT(IN) :: chargeweight
     LOGICAL, INTENT(IN) :: drift_switch
-    REAL(num) :: idx, idy, idz
-    REAL(num) :: i_yz, i_xz, i_xy
     REAL(num) :: cell_x_r, cell_y_r, cell_z_r
     REAL(num) :: part_x, part_y, part_z
     INTEGER :: cell_x3
@@ -125,16 +134,7 @@ CONTAINS
     INTEGER :: xmin, xmax, ymin, ymax, zmin, zmax
     REAL(num) :: wx, wy, wz
     REAL(num), PARAMETER :: third = (1.0_num / 3.0_num)
-    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
     REAL(num) :: xfac1, xfac2, yfac1, yfac2, zfac1, zfac2
-
-    idx = 1.0_num / dx
-    idy = 1.0_num / dy
-    idz = 1.0_num / dz
-    !TODO - these remain constant throughout the simulation, and should only be calculated once
-    i_yz = idy * idz * fac
-    i_xz = idx * idz * fac
-    i_xy = idx * idy * fac
 
     part_x = pos(1) - x_grid_min_local
     part_y = pos(2) - y_grid_min_local

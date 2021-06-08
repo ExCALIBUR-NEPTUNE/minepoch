@@ -5,6 +5,8 @@ MODULE current_deposition
 
   IMPLICIT NONE
 
+  PRIVATE :: calc_stdata
+
   REAL(num), PRIVATE :: idx, idy, idz
   REAL(num), PRIVATE :: i_yz, i_xz, i_xy
 
@@ -25,62 +27,6 @@ CONTAINS
   END SUBROUTINE setup_current_deposition
 
 
-
-  ! Utility routine for calculating cell offsets and weights
-  ! at a position.
-  SUBROUTINE calc_stdata(pos,st)
-    TYPE(fields_eval_tmps), INTENT(INOUT) :: st
-    REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos
-    INTEGER :: cell_x1, cell_y1, cell_z1
-    REAL(num) :: cell_x_r, cell_y_r, cell_z_r
-    REAL(num) :: part_x, part_y, part_z
-    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
-    REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
-    REAL(num) :: cf2
-
-    part_x = pos(1) - x_grid_min_local
-    part_y = pos(2) - y_grid_min_local
-    part_z = pos(3) - z_grid_min_local
-
-    ! Grid cell position as a fraction.
-    cell_x_r = part_x * idx
-    cell_y_r = part_y * idy
-    cell_z_r = part_z * idz
-
-    ! Round cell position to nearest cell
-    cell_x1 = FLOOR(cell_x_r + 0.5_num)
-    ! Calculate fraction of cell between nearest cell boundary and particle
-    cell_frac_x = REAL(cell_x1, num) - cell_x_r
-    cell_x1 = cell_x1 + 1
-
-    cell_y1 = FLOOR(cell_y_r + 0.5_num)
-    cell_frac_y = REAL(cell_y1, num) - cell_y_r
-    cell_y1 = cell_y1 + 1
-
-    cell_z1 = FLOOR(cell_z_r + 0.5_num)
-    cell_frac_z = REAL(cell_z1, num) - cell_z_r
-    cell_z1 = cell_z1 + 1
-
-    ! Particle weight factors as described in the manual, page25
-    ! These weight grid properties onto particles
-    ! Also used to weight particle properties onto grid, used later
-    ! to calculate J
-    ! NOTE: These weights require an additional multiplication factor!
-    gx=0
-    gy=0
-    gz=0
-#include "bspline3/gx.inc"
-
-    !Temporary storage for current deposition.
-    st%gx = gx
-    st%gy = gy
-    st%gz = gz
-
-    st%cell_x1 = cell_x1
-    st%cell_y1 = cell_y1
-    st%cell_z1 = cell_z1
-
-  END SUBROUTINE calc_stdata
 
   ! Do current deposition of particle moving along straight line
   ! from pos0 to pos1, with chargeweight = weight*charge
@@ -237,5 +183,63 @@ CONTAINS
     END DO
 
   END SUBROUTINE current_deposition_store
+
+
+
+  ! Utility routine for calculating cell offsets and weights
+  ! at a position.
+  SUBROUTINE calc_stdata(pos,st)
+    TYPE(fields_eval_tmps), INTENT(INOUT) :: st
+    REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos
+    INTEGER :: cell_x1, cell_y1, cell_z1
+    REAL(num) :: cell_x_r, cell_y_r, cell_z_r
+    REAL(num) :: part_x, part_y, part_z
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
+    REAL(num) :: cf2
+
+    part_x = pos(1) - x_grid_min_local
+    part_y = pos(2) - y_grid_min_local
+    part_z = pos(3) - z_grid_min_local
+
+    ! Grid cell position as a fraction.
+    cell_x_r = part_x * idx
+    cell_y_r = part_y * idy
+    cell_z_r = part_z * idz
+
+    ! Round cell position to nearest cell
+    cell_x1 = FLOOR(cell_x_r + 0.5_num)
+    ! Calculate fraction of cell between nearest cell boundary and particle
+    cell_frac_x = REAL(cell_x1, num) - cell_x_r
+    cell_x1 = cell_x1 + 1
+
+    cell_y1 = FLOOR(cell_y_r + 0.5_num)
+    cell_frac_y = REAL(cell_y1, num) - cell_y_r
+    cell_y1 = cell_y1 + 1
+
+    cell_z1 = FLOOR(cell_z_r + 0.5_num)
+    cell_frac_z = REAL(cell_z1, num) - cell_z_r
+    cell_z1 = cell_z1 + 1
+
+    ! Particle weight factors as described in the manual, page25
+    ! These weight grid properties onto particles
+    ! Also used to weight particle properties onto grid, used later
+    ! to calculate J
+    ! NOTE: These weights require an additional multiplication factor!
+    gx=0
+    gy=0
+    gz=0
+#include "bspline3/gx.inc"
+
+    !Temporary storage for current deposition.
+    st%gx = gx
+    st%gy = gy
+    st%gz = gz
+
+    st%cell_x1 = cell_x1
+    st%cell_y1 = cell_y1
+    st%cell_z1 = cell_z1
+
+  END SUBROUTINE calc_stdata
 
 END MODULE current_deposition

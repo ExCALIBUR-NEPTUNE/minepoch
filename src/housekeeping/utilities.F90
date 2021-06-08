@@ -19,10 +19,10 @@ CONTAINS
   SUBROUTINE calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,&
        & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
 
-    INTEGER :: cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2
-    REAL(num), DIMENSION(3,3) :: Btens
-    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
-    REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
+    INTEGER, INTENT(IN) :: cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2
+    REAL(num), DIMENSION(3,3), INTENT(OUT) :: Btens
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2), INTENT(IN) :: gdx, gdy, gdz
+    REAL(num), DIMENSION(sf_min-1:sf_max+1,2), INTENT(IN) :: hdx, hdy, hdz
     INTEGER :: cello_x,cello_y,cello_z
     INTEGER :: xp,yp,zp !Keep track of which derivative is being taken.
     INTEGER :: ii
@@ -94,13 +94,24 @@ CONTAINS
 
 
 
-  ! Evaluate fields at a point.
+  !****************************************************************************
+  !> \brief Evaluate Electric and Magnetic fields at a point
+  !>
+  !> Subroutine for calculating magnetic and electric fields at a given
+  !> position, using particle-to-grid weight functions.
+  !>
+  !> @param[in] pos 3D position (x,y,z) to evaluate fields at
+  !> @param[out] bvec Vector magnetic field (Bx, By, Bz) at pos
+  !> @param[out] evec Vector magnetic field (Ex, Ey, Ez) at pos
+  !> @param[out] st TYPE(fields_eval_tmps) to store weighting values (OPTIONAL)
+  !> @param[out] btens REAL(num) (3,3) to store grad B (OPTIONAL)
+  !****************************************************************************
   SUBROUTINE get_fields_at_point(pos,bvec,evec,st,btens)
 
-    REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
-    TYPE(fields_eval_tmps), INTENT(INOUT), OPTIONAL :: st
-    REAL(num), DIMENSION(3,3), INTENT(INOUT), OPTIONAL :: btens
-
+    REAL(num), DIMENSION(3), INTENT(IN) :: pos
+    REAL(num), DIMENSION(3),   INTENT(OUT) :: bvec,evec
+    TYPE(fields_eval_tmps), INTENT(OUT), OPTIONAL :: st
+    REAL(num), DIMENSION(3,3), INTENT(OUT), OPTIONAL :: btens
     ! Fields at particle location
     REAL(num) :: ex_part, ey_part, ez_part, bx_part, by_part, bz_part
     REAL(num) :: cell_x_r, cell_y_r, cell_z_r
@@ -201,7 +212,7 @@ CONTAINS
     Bvec(3) = Bz_part
 
     IF (PRESENT(st)) THEN
-      ! Temporary storage for current deposition.
+      ! Temporary storage for further use (e.g. current deposition)
       st%gx = gx
       st%gy = gy
       st%gz = gz

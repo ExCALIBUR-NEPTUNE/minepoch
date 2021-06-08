@@ -111,7 +111,7 @@ CONTAINS
      ipart = 0
      DO WHILE(ipart < partlist%count)
         mass = current%mass
-        CALL get_fields_at_point(current%part_pos,bvec,evec,btens)
+        CALL get_fields_at_point(current%part_pos,bvec,evec,btens=btens)
         Bnorm = sqrt(dot_product(Bvec,Bvec))
         bdir = Bvec/Bnorm
         pvec = current%part_p

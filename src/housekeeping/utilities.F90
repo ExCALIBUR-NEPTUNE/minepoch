@@ -94,22 +94,11 @@ CONTAINS
 
 
 
-  SUBROUTINE get_fields_at_point(pos,bvec,evec,btens)
-
-    REAL(num), DIMENSION(3), INTENT(INOUT) :: pos,bvec,evec
-    REAL(num), DIMENSION(3,3), INTENT(INOUT) :: btens
-    TYPE(fields_eval_tmps) :: st
-    CALL get_fields_at_point_store(pos,bvec,evec,st,btens)
-
-  END SUBROUTINE get_fields_at_point
-
-
-
   ! Evaluate fields at a point.
-  SUBROUTINE get_fields_at_point_store(pos,bvec,evec,st,btens)
+  SUBROUTINE get_fields_at_point(pos,bvec,evec,st,btens)
 
-    TYPE(fields_eval_tmps), INTENT(INOUT) :: st
     REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos,bvec,evec
+    TYPE(fields_eval_tmps), INTENT(INOUT), OPTIONAL :: st
     REAL(num), DIMENSION(3,3), INTENT(INOUT), OPTIONAL :: btens
 
     ! Fields at particle location
@@ -211,14 +200,16 @@ CONTAINS
     Bvec(2) = By_part
     Bvec(3) = Bz_part
 
-    ! Temporary storage for current deposition.
-    st%gx = gx
-    st%gy = gy
-    st%gz = gz
+    IF (PRESENT(st)) THEN
+      ! Temporary storage for current deposition.
+      st%gx = gx
+      st%gy = gy
+      st%gz = gz
 
-    st%cell_x1 = cell_x1
-    st%cell_y1 = cell_y1
-    st%cell_z1 = cell_z1
+      st%cell_x1 = cell_x1
+      st%cell_y1 = cell_y1
+      st%cell_z1 = cell_z1
+    END IF
 
     IF(PRESENT(Btens)) THEN
       CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
@@ -228,7 +219,7 @@ CONTAINS
           & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
     END IF
 
-  END SUBROUTINE get_fields_at_point_store
+  END SUBROUTINE get_fields_at_point
 
   SUBROUTINE grow_real_array(array, idx)
 

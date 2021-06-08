@@ -195,7 +195,7 @@ CONTAINS
 
       ! Move particles to half timestep position to first order
       pos_half = current%part_pos + root * (/ part_ux, part_uy, part_uz /)
-      CALL get_fields_at_point_store(pos_half,Bvec,Evec,st_half)
+      CALL get_fields_at_point(pos_half,Bvec,Evec,st=st_half)
 
       ! update particle momenta using weighted fields
       uxm = part_ux + cmratio * Evec(1)
@@ -323,7 +323,7 @@ CONTAINS
             write (18,*) ipart,current%part_pos(1),current%part_pos(2),current%part_pos(3),part_u,part_mu,current%part_p(3)
          END IF
 
-         CALL get_fields_at_point_store(current%part_pos,Bvec,Evec,st_0,Btens)
+         CALL get_fields_at_point(current%part_pos,Bvec,Evec,st=st_0,btens=Btens)
          CALL get_drifts(current%part_pos,Evec,Bvec,Btens,drifts_ExB,bdir, &
               &  drifts_mu,drifts_vpll, bdotBmag)
 
@@ -396,7 +396,7 @@ CONTAINS
          ! From this point on: need to advance fields half a step in time: we could do this
          ! using the PIC particle currents + estimated drift currents:
 
-         CALL get_fields_at_point_store(pos_h,Bvec,Evec,st_half,Btens)
+         CALL get_fields_at_point(pos_h,Bvec,Evec,st=st_half,btens=Btens)
          CALL get_drifts(pos_h,Evec,Bvec,Btens,drifts_ExB,bdir, &
               &  drifts_mu,drifts_vpll, bdotBmag)
          dRdt_1 = bdir * part_u_h
@@ -697,7 +697,7 @@ CONTAINS
     pos(2) =  y_grid_min_local
     pos(3) =  z_grid_min_local
 
-    CALL  get_fields_at_point(pos,bvec,evec,btens)
+    CALL  get_fields_at_point(pos,bvec,evec,btens=btens)
     WRITE (*,*) 'pos',pos(1),pos(2),pos(3)
     WRITE (*,*) 'bvec',bvec(1),bvec(2),bvec(3)
     WRITE (*,*) 'evec',evec(1),evec(2),evec(3)
@@ -712,7 +712,7 @@ CONTAINS
 
     Do i=1,nx
        pos(1) =  x_grid_min_local + i*dx*0.2
-       CALL  get_fields_at_point(pos,bvec,evec,btens)
+       CALL  get_fields_at_point(pos,bvec,evec,btens=btens)
        WRITE (24,*) pos(1),bvec(1),bvec(2),bvec(3),evec(1),evec(2),evec(3)
        CALL  get_drifts(pos,Evec,Bvec,Btens,ExB,bdir,drifts_mu,drifts_vpll,bdir_dotgradBmag)
        !WRITE (24,*) pos(1),bvec(1),bvec(2),bvec(3),btens(1,1),btens(1,2),btens(1,3)

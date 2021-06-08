@@ -33,11 +33,23 @@ CONTAINS
 
 
 
-  ! Do current deposition of particle moving along straight line
-  ! from pos0 to pos1, with chargeweight = weight*charge
+  !****************************************************************************
+  !> \breif Calculate current deposition as particle moves from pos0 to pos1
+  !>
+  !> Uses the charge-conserving scheme of Esirkepov (see reference) to
+  !> calculate current due to macro-particle of total charge `chargeweight`.
+  !>
+  !> @param[in] pos0 3D (x, y, z) initial position of particle
+  !> @param[in] pos1 3D (x, y, z) final position of particle
+  !> @param[in] chargeweight Total charge of macro-particle
+  !> @param[in] drift_switch Control if current should be deposited in
+  !>            (jx, jy, jz) or (jx_d, jy_d, jz_d)
+  !>
+  !> Reference: (https://doi.org/10.1016/S0010-4655(00)00228-9)
+  !****************************************************************************
   SUBROUTINE current_deposition_esirkepov_pos(pos0, pos1, chargeweight, drift_switch)
 
-    REAL(num), DIMENSION(3), INTENT(INOUT) :: pos0,pos1
+    REAL(num), DIMENSION(3), INTENT(IN) :: pos0,pos1
     REAL(num), INTENT(IN) :: chargeweight
     LOGICAL, INTENT(IN) :: drift_switch
     TYPE(fields_eval_tmps)  :: st0
@@ -49,12 +61,27 @@ CONTAINS
 
 
 
-  ! Do current deposition, reusing some precalculated data (in st)
-  ! Particle has moved from pos0 (data stored in st) to pos
+  !****************************************************************************
+  !> \breif Calculate current deposition as particle moves from st to pos
+  !>
+  !> Uses the charge-conserving scheme of Esirkepov (see reference) to
+  !> calculate current due to macro-particle of total charge `chargeweight`.
+  !> Uses pre-computed weight-function information in place for initial
+  !> particle position
+  !>
+  !> @param[in] st TYPE(fields_eval_tmps) containing particle weight-function
+  !>               for initial position
+  !> @param[in] pos 3D (x, y, z) final position of particle
+  !> @param[in] chargeweight Total charge of macro-particle
+  !> @param[in] drift_switch Control if current should be deposited in
+  !>            (jx, jy, jz) or (jx_d, jy_d, jz_d)
+  !>
+  !> Reference: (https://doi.org/10.1016/S0010-4655(00)00228-9)
+  !****************************************************************************
   SUBROUTINE current_deposition_esirkepov_store(st, pos, chargeweight, drift_switch)
 
-    REAL(num), DIMENSION(3), INTENT(INOUT) :: pos
-    TYPE(fields_eval_tmps), INTENT(INOUT)  :: st
+    REAL(num), DIMENSION(3), INTENT(IN) :: pos
+    TYPE(fields_eval_tmps), INTENT(IN)  :: st
     REAL(num), INTENT(IN) :: chargeweight
     LOGICAL, INTENT(IN) :: drift_switch
     REAL(num) :: cell_x_r, cell_y_r, cell_z_r
@@ -196,7 +223,7 @@ CONTAINS
   ! at a position.
   SUBROUTINE calc_stdata(pos,st)
     TYPE(fields_eval_tmps), INTENT(INOUT) :: st
-    REAL(num), DIMENSION(3),   INTENT(INOUT) :: pos
+    REAL(num), DIMENSION(3), INTENT(IN) :: pos
     INTEGER :: cell_x1, cell_y1, cell_z1
     REAL(num) :: cell_x_r, cell_y_r, cell_z_r
     REAL(num) :: part_x, part_y, part_z

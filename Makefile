@@ -188,7 +188,7 @@ SRCFILES = balance.F90 boundary.f90 calc_df.F90 custom_laser.f90 deck.f90 \
   laser.f90 mpi_routines.F90 mpi_subtype_control.f90 particle_temperature.F90 \
   particles.F90 partlist.F90 problem_setup.f90 random_generator.f90 \
   redblack_module.f90 setup.F90 shared_data.F90 strings.f90 timer.f90 \
-  utilities.f90 version_data.F90 welcome.F90 deltaf_loader.F90
+  utilities.F90 version_data.F90 welcome.F90 deltaf_loader.F90
 
 OBJFILES := $(SRCFILES:.f90=.o)
 OBJFILES := $(OBJFILES:.F90=.o)
@@ -281,6 +281,6 @@ setup.o: setup.F90 fields.o laser.o strings.o timer.o version_data.o
 shared_data.o: shared_data.F90
 strings.o: strings.f90 shared_data.o
 timer.o: timer.f90 shared_data.o
-utilities.o: utilities.f90 shared_data.o
+utilities.o: utilities.F90 shared_data.o
 version_data.o: version_data.F90 $(SRCDIR)/COMMIT
 welcome.o: welcome.F90 shared_data.o version_data.o

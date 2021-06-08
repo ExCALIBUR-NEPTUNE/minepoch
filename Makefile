@@ -183,12 +183,13 @@ PREPROFLAGS = $(DEFINES) $(D)_COMMIT='"$(COMMIT)"' $(D)_DATE=$(DATE) \
 FC_INFO := $(shell ${FC} --version 2>/dev/null \
     || ${FC} -V 2>&1 | grep '[a-zA-Z]' | head -n 1)
 
-SRCFILES = balance.F90 boundary.f90 calc_df.F90 custom_laser.f90 deck.f90 \
-  diagnostics.F90 epoch3d.F90 fields.f90 finish.f90 helper.F90 ic_module.f90 \
-  laser.f90 mpi_routines.F90 mpi_subtype_control.f90 particle_temperature.F90 \
-  particles.F90 partlist.F90 problem_setup.f90 random_generator.f90 \
-  redblack_module.f90 setup.F90 shared_data.F90 strings.f90 timer.f90 \
-  utilities.F90 version_data.F90 welcome.F90 deltaf_loader.F90
+SRCFILES = balance.F90 boundary.f90 calc_df.F90 current_deposition.F90 \
+  custom_laser.f90 deck.f90 diagnostics.F90 epoch3d.F90 fields.f90 finish.f90 \
+  helper.F90 ic_module.f90 laser.f90 mpi_routines.F90 mpi_subtype_control.f90 \
+  particle_temperature.F90 particles.F90 partlist.F90 problem_setup.f90 \
+  random_generator.f90 redblack_module.f90 setup.F90 shared_data.F90 \
+  strings.f90 timer.f90 utilities.F90 version_data.F90 welcome.F90 \
+  deltaf_loader.F90
 
 OBJFILES := $(SRCFILES:.f90=.o)
 OBJFILES := $(OBJFILES:.F90=.o)
@@ -254,6 +255,7 @@ balance.o: balance.F90 boundary.o redblack_module.o timer.o
 boundary.o: boundary.f90 laser.o mpi_subtype_control.o particle_temperature.o \
   partlist.o
 calc_df.o: calc_df.F90 shared_data.o
+current_deposition.o: current_deposition.F90 shared_data.o utilities.o
 custom_laser.o: custom_laser.f90 shared_data.o
 deck.o: deck.f90 shared_data.o timer.o fields.o
 diagnostics.o: diagnostics.F90 calc_df.o shared_data.o strings.o timer.o
@@ -270,7 +272,8 @@ mpi_routines.o: mpi_routines.F90 helper.o
 mpi_subtype_control.o: mpi_subtype_control.f90 shared_data.o
 particle_temperature.o: particle_temperature.F90 random_generator.o \
   shared_data.o
-particles.o: particles.F90 boundary.o deltaf_loader.o partlist.o utilities.o
+particles.o: particles.F90 boundary.o current_deposition.o \
+  deltaf_loader.o partlist.o utilities.o
 deltaf_loader.o: deltaf_loader.F90 shared_data.o
 partlist.o: partlist.F90 shared_data.o
 problem_setup.o: problem_setup.f90 fields.o ic_module.o shared_data.o \

@@ -3,6 +3,7 @@ MODULE particles
   USE boundary
   USE partlist
   USE deltaf_loader2, ONLY: params_local, params_local_all
+  USE utilities
 
   IMPLICIT NONE
 

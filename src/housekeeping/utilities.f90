@@ -1,6 +1,7 @@
 MODULE utilities
 
   USE constants
+  USE shared_data
 
   IMPLICIT NONE
 

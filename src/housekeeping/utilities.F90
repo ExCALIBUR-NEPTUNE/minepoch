@@ -16,14 +16,13 @@ CONTAINS
   ! Need this for general grad B drift, calculating B*, etc.
   ! For the moment, aiming for code that is easy to modify/test rather
   ! than max performance.
-  SUBROUTINE calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+  SUBROUTINE calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,&
        & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
 
     INTEGER :: cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2
     REAL(num), DIMENSION(3,3) :: Btens
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
-    REAL(num) :: idx,idy,idz
     INTEGER :: cello_x,cello_y,cello_z
     INTEGER :: xp,yp,zp !Keep track of which derivative is being taken.
     INTEGER :: ii
@@ -225,7 +224,7 @@ CONTAINS
       CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
       CALL h_derivs(hdy,hy,dcelly,cell_frac_y,idy)
       CALL h_derivs(hdz,hz,dcellz,cell_frac_z,idz)
-      CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
+      CALL calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz, &
           & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
     END IF
 

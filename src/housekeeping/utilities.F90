@@ -18,12 +18,12 @@ CONTAINS
   ! than max performance.
   SUBROUTINE calc_Btens(Btens,hdx,hdy,hdz,gdx,gdy,gdz,idx,idy,idz, &
        & cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2)
+
     INTEGER :: cell_x1,cell_x2,cell_y1,cell_y2,cell_z1,cell_z2
     REAL(num), DIMENSION(3,3) :: Btens
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: gdx, gdy, gdz
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
     REAL(num) :: idx,idy,idz
-
     INTEGER :: cello_x,cello_y,cello_z
     INTEGER :: xp,yp,zp !Keep track of which derivative is being taken.
     INTEGER :: ii
@@ -143,9 +143,9 @@ CONTAINS
     idy = 1.0_num / dy
     idz = 1.0_num / dz
 
-    gx=0
-    gy=0
-    gz=0
+    gx = 0.0_num
+    gy = 0.0_num
+    gz = 0.0_num
 
     part_x = pos(1) - x_grid_min_local
     part_y = pos(2) - y_grid_min_local
@@ -195,9 +195,9 @@ CONTAINS
     cell_frac_z = REAL(cell_z2, num) - cell_z_r + 0.5_num
     cell_z2 = cell_z2 + 1
 
-    dcellx = 0
-    dcelly = 0
-    dcellz = 0
+    dcellx = 0.0_num
+    dcelly = 0.0_num
+    dcellz = 0.0_num
     ! NOTE: These weights require an additional multiplication factor!
 #include "bspline3/hx_dcell.inc"
     ! These are the electric and magnetic fields interpolated to the

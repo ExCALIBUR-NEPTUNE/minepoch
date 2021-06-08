@@ -174,11 +174,6 @@ CONTAINS
     ! to calculate J
     ! NOTE: These weights require an additional multiplication factor!
 #include "bspline3/gx.inc"
-    IF(present(Btens)) THEN
-       CALL h_derivs(gdx,gx,0,cell_frac_x,idx)
-       CALL h_derivs(gdy,gy,0,cell_frac_y,idy)
-       CALL h_derivs(gdz,gz,0,cell_frac_z,idz)
-    END IF
     ! Now redo shifted by half a cell due to grid stagger.
     ! Use shifted version for ex in X, ey in Y, ez in Z
     ! And in Y&Z for bx, X&Z for by, X&Y for bz
@@ -223,6 +218,9 @@ CONTAINS
     END IF
 
     IF(PRESENT(Btens)) THEN
+      CALL h_derivs(gdx,gx,0,cell_frac_x,idx)
+      CALL h_derivs(gdy,gy,0,cell_frac_y,idy)
+      CALL h_derivs(gdz,gz,0,cell_frac_z,idz)
       CALL h_derivs(hdx,hx,dcellx,cell_frac_x,idx)
       CALL h_derivs(hdy,hy,dcelly,cell_frac_y,idy)
       CALL h_derivs(hdz,hz,dcellz,cell_frac_z,idz)

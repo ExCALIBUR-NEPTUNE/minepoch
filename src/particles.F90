@@ -9,7 +9,7 @@ MODULE particles
 
   PRIVATE
   PUBLIC :: push_particles, push_particles_2ndstep
-  PUBLIC :: setup_fluid, get_fields_at_point
+  PUBLIC :: setup_fluid
 
   ! Some numerical factors needed for various particle-fields routines.
   REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims

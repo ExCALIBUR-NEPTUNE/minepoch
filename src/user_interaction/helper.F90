@@ -4,6 +4,8 @@ MODULE helper
   USE strings
   USE partlist
   USE deltaf_loader2, ONLY: delstaf_load
+  USE utilities
+
   IMPLICIT NONE
 
 CONTAINS
@@ -95,8 +97,9 @@ CONTAINS
 
   END SUBROUTINE auto_load
 
-  SUBROUTINE setup_particle_driftkinetic(part_species) 
-    USE particles, ONLY: get_fields_at_point
+
+
+  SUBROUTINE setup_particle_driftkinetic(part_species)
     TYPE(particle_species), POINTER, INTENT(INOUT) :: part_species
     TYPE(particle_list), POINTER :: partlist
     REAL(num) :: mass, Bnorm, mu, ppll, pperp

@@ -55,7 +55,7 @@ CONTAINS
 
 
 
-  INTEGER FUNCTION kronecker_delta(a,b)
+  PURE INTEGER FUNCTION kronecker_delta(a,b)
     INTEGER, INTENT(IN) :: a,b
     IF (a==b) THEN
        kronecker_delta=1

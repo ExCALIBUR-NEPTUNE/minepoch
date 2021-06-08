@@ -12,18 +12,20 @@ MODULE current_deposition
   PRIVATE :: calc_stdata
   PRIVATE :: current_deposition_esirkepov_pos, current_deposition_esirkepov_store
 
-  REAL(num), PRIVATE :: idx, idy, idz
+  REAL(num), PRIVATE :: idx, idy, idz, iv
   REAL(num), PRIVATE :: i_yz, i_xz, i_xy
+  REAL(num), PRIVATE, PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
 CONTAINS
 
   SUBROUTINE setup_current_deposition
 
-    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     idx = 1.0_num / dx
     idy = 1.0_num / dy
     idz = 1.0_num / dz
+
+    iv = idx * idy * idz
 
     i_yz = idy * idz * fac
     i_xz = idx * idz * fac
@@ -34,7 +36,105 @@ CONTAINS
 
 
   !****************************************************************************
-  !> \breif Calculate current deposition as particle moves from pos0 to pos1
+  !> \brief Calculate current deposition, given position, velocity and charge.
+  !>
+  !> Current of a macro-particle is calculated as the product of the
+  !> velocity, charge and shape function.
+  !> Note that this scheme -is not- charge conserving.
+  !>
+  !> @param[in] pos 3D (x, y, z) position of particle.
+  !> @param[in] vel 3D (vx, vy, vz) velocity of particle.
+  !> @param[in] chargeweight Total charge of macro-particle.
+  !****************************************************************************
+  SUBROUTINE current_deposition_simple(pos, vel, chargeweight)
+
+    REAL(num), DIMENSION(3), INTENT(IN) :: pos, vel
+    REAL(num), INTENT(IN) :: chargeweight
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
+    REAL(num) :: part_x, part_y, part_z
+    REAL(num) :: cell_x_r, cell_y_r, cell_z_r
+    INTEGER :: cell_x1, cell_x2
+    INTEGER :: cell_y1, cell_y2
+    INTEGER :: cell_z1, cell_z2
+    INTEGER :: dcellx, dcelly, dcellz
+    ! The fraction of a cell between the particle position and the cell boundary
+    REAL(num) :: cell_frac_x, cell_frac_y, cell_frac_z
+    REAL(num) :: jxp, jyp, jzp, jxw, jyw, jzw
+    REAL(num) :: cf2
+    INTEGER :: ix, iy, iz
+
+    part_x = pos(1) - x_grid_min_local
+    part_y = pos(2) - y_grid_min_local
+    part_z = pos(3) - z_grid_min_local
+
+    gx = 0.0_num
+    gy = 0.0_num
+    gz = 0.0_num
+
+    ! Grid cell position as a fraction.
+    cell_x_r = part_x * idx
+    cell_y_r = part_y * idy
+    cell_z_r = part_z * idz
+    ! Round cell position to nearest cell
+    cell_x1 = FLOOR(cell_x_r + 0.5_num)
+    ! Calculate fraction of cell between nearest cell boundary and particle
+    cell_frac_x = REAL(cell_x1, num) - cell_x_r
+    cell_x1 = cell_x1 + 1
+
+    cell_y1 = FLOOR(cell_y_r + 0.5_num)
+    cell_frac_y = REAL(cell_y1, num) - cell_y_r
+    cell_y1 = cell_y1 + 1
+
+    cell_z1 = FLOOR(cell_z_r + 0.5_num)
+    cell_frac_z = REAL(cell_z1, num) - cell_z_r
+    cell_z1 = cell_z1 + 1
+#include "bspline3/gx.inc"
+
+    ! Now redo shifted by half a cell due to grid stagger.
+    cell_x2 = FLOOR(cell_x_r)
+    cell_frac_x = REAL(cell_x2, num) - cell_x_r + 0.5_num
+    cell_x2 = cell_x2 + 1
+
+    cell_y2 = FLOOR(cell_y_r)
+    cell_frac_y = REAL(cell_y2, num) - cell_y_r + 0.5_num
+    cell_y2 = cell_y2 + 1
+
+    cell_z2 = FLOOR(cell_z_r)
+    cell_frac_z = REAL(cell_z2, num) - cell_z_r + 0.5_num
+    cell_z2 = cell_z2 + 1
+
+    dcellx = 0.0_num
+    dcelly = 0.0_num
+    dcellz = 0.0_num
+#include "bspline3/hx_dcell.inc"
+
+    jxp = chargeweight * vel(1) * iv * fac
+    jyp = chargeweight * vel(2) * iv * fac
+    jzp = chargeweight * vel(3) * iv * fac
+
+    DO iz = sf_min, sf_max
+      DO iy = sf_min, sf_max
+        DO ix = sf_min, sf_max
+          jxw = gz(iz) * gy(iy) * hx(ix)
+          jyw = gz(iz) * hy(iy) * gx(ix)
+          jzw = hz(iz) * gy(iy) * gx(ix)
+          jx(cell_x2+ix, cell_y1+iy, cell_z1+iz) = &
+              jx(cell_x2+ix, cell_y1+iy, cell_z1+iz) + jxw * jxp
+          jy(cell_x1+ix, cell_y2+iy, cell_z1+iz) = &
+              jy(cell_x1+ix, cell_y2+iy, cell_z1+iz) + jyw * jyp
+          jz(cell_x1+ix, cell_y1+iy, cell_z2+iz) = &
+              jz(cell_x1+ix, cell_y1+iy, cell_z2+iz) + jzw * jzp
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE current_deposition_simple
+
+
+
+  !****************************************************************************
+  !> \brief Calculate current deposition as particle moves from pos0 to pos1
   !>
   !> Uses the charge-conserving scheme of Esirkepov (see reference) to
   !> calculate current due to macro-particle of total charge `chargeweight`.

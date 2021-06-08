@@ -267,8 +267,8 @@ CONTAINS
         ! in time for evaluation of current at t+dt
         CALL current_deposition_esirkepov(st_half, part_pos_t1p5, (part_weight*part_qfac), jx, jy, jz)
       ELSE
-        ! TODO
-        STOP
+        part_v = (/part_ux, part_uy, part_uz/) * c / gamma
+        CALL current_deposition_simple(current%part_pos, part_v, part_weight * part_q)
       END IF
 
       IF (species%solve_fluid) THEN

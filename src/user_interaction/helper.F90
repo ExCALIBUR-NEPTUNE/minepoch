@@ -4,6 +4,8 @@ MODULE helper
   USE strings
   USE partlist
   USE deltaf_loader2, ONLY: delstaf_load
+  USE utilities
+
   IMPLICIT NONE
 
 CONTAINS
@@ -95,8 +97,9 @@ CONTAINS
 
   END SUBROUTINE auto_load
 
-  SUBROUTINE setup_particle_driftkinetic(part_species) 
-    USE particles, ONLY: get_fields_at_point
+
+
+  SUBROUTINE setup_particle_driftkinetic(part_species)
     TYPE(particle_species), POINTER, INTENT(INOUT) :: part_species
     TYPE(particle_list), POINTER :: partlist
     REAL(num) :: mass, Bnorm, mu, ppll, pperp
@@ -111,7 +114,7 @@ CONTAINS
      ipart = 0
      DO WHILE(ipart < partlist%count)
         mass = current%mass
-        CALL get_fields_at_point(current%part_pos,bvec,evec,btens)
+        CALL get_fields_at_point(current%part_pos,bvec,evec,btens=btens)
         Bnorm = sqrt(dot_product(Bvec,Bvec))
         bdir = Bvec/Bnorm
         pvec = current%part_p

@@ -24,4 +24,5 @@
   stdout_frequency = 10,
   particle_push_start_time = 0.0,
   nspecies = 0,
+  use_esirkepov = T,
 /

@@ -42,20 +42,21 @@ CONTAINS
   !> @param[in] pos0 3D (x, y, z) initial position of particle
   !> @param[in] pos1 3D (x, y, z) final position of particle
   !> @param[in] chargeweight Total charge of macro-particle
-  !> @param[in] drift_switch Control if current should be deposited in
-  !>            (jx, jy, jz) or (jx_d, jy_d, jz_d)
+  !> @param[in,out] jx Array to deposit x-component of current density
+  !> @param[in,out] jy Array to deposit y-component of current density
+  !> @param[in,out] jz Array to deposit z-component of current density
   !>
   !> Reference: (https://doi.org/10.1016/S0010-4655(00)00228-9)
   !****************************************************************************
-  SUBROUTINE current_deposition_esirkepov_pos(pos0, pos1, chargeweight, drift_switch)
+  SUBROUTINE current_deposition_esirkepov_pos(pos0, pos1, chargeweight, jx, jy, jz)
 
     REAL(num), DIMENSION(3), INTENT(IN) :: pos0,pos1
     REAL(num), INTENT(IN) :: chargeweight
-    LOGICAL, INTENT(IN) :: drift_switch
+    REAL(num), INTENT(INOUT), DIMENSION(1-jng:,1-jng:,1-jng:) :: jx, jy, jz
     TYPE(fields_eval_tmps)  :: st0
 
     CALL calc_stdata(pos0,st0)
-    CALL current_deposition_esirkepov_store(st0, pos1, chargeweight, drift_switch)
+    CALL current_deposition_esirkepov_store(st0, pos1, chargeweight, jx, jy, jz)
 
   END SUBROUTINE current_deposition_esirkepov_pos
 
@@ -73,17 +74,18 @@ CONTAINS
   !>               for initial position
   !> @param[in] pos 3D (x, y, z) final position of particle
   !> @param[in] chargeweight Total charge of macro-particle
-  !> @param[in] drift_switch Control if current should be deposited in
-  !>            (jx, jy, jz) or (jx_d, jy_d, jz_d)
+  !> @param[in,out] jx Array to deposit x-component of current density
+  !> @param[in,out] jy Array to deposit y-component of current density
+  !> @param[in,out] jz Array to deposit z-component of current density
   !>
   !> Reference: (https://doi.org/10.1016/S0010-4655(00)00228-9)
   !****************************************************************************
-  SUBROUTINE current_deposition_esirkepov_store(st, pos, chargeweight, drift_switch)
+  SUBROUTINE current_deposition_esirkepov_store(st, pos, chargeweight, jx, jy, jz)
 
     REAL(num), DIMENSION(3), INTENT(IN) :: pos
     TYPE(fields_eval_tmps), INTENT(IN)  :: st
     REAL(num), INTENT(IN) :: chargeweight
-    LOGICAL, INTENT(IN) :: drift_switch
+    REAL(num), INTENT(INOUT), DIMENSION(1-jng:,1-jng:,1-jng:) :: jx, jy, jz
     REAL(num) :: cell_x_r, cell_y_r, cell_z_r
     REAL(num) :: part_x, part_y, part_z
     INTEGER :: cell_x3
@@ -202,15 +204,10 @@ CONTAINS
           jxh = jxh - fjx * wx
           jyh(ix) = jyh(ix) - fjy * wy
           jzh(ix, iy) = jzh(ix, iy) - fjz * wz
-          IF (.NOT. drift_switch) THEN
-            jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
-            jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
-            jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)
-          ELSE
-            jx_d(cx, cy, cz) = jx_d(cx, cy, cz) + jxh
-            jy_d(cx, cy, cz) = jy_d(cx, cy, cz) + jyh(ix)
-            jz_d(cx, cy, cz) = jz_d(cx, cy, cz) + jzh(ix, iy)
-          END IF
+
+          jx(cx, cy, cz) = jx(cx, cy, cz) + jxh
+          jy(cx, cy, cz) = jy(cx, cy, cz) + jyh(ix)
+          jz(cx, cy, cz) = jz(cx, cy, cz) + jzh(ix, iy)
         END DO
       END DO
     END DO

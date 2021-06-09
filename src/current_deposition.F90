@@ -45,11 +45,15 @@ CONTAINS
   !> @param[in] pos 3D (x, y, z) position of particle.
   !> @param[in] vel 3D (vx, vy, vz) velocity of particle.
   !> @param[in] chargeweight Total charge of macro-particle.
+  !> @param[in,out] jx Array to deposit x-component of current density
+  !> @param[in,out] jy Array to deposit y-component of current density
+  !> @param[in,out] jz Array to deposit z-component of current density
   !****************************************************************************
-  SUBROUTINE current_deposition_simple(pos, vel, chargeweight)
+  SUBROUTINE current_deposition_simple(pos, vel, chargeweight, jx, jy, jz)
 
     REAL(num), DIMENSION(3), INTENT(IN) :: pos, vel
     REAL(num), INTENT(IN) :: chargeweight
+    REAL(num), INTENT(INOUT), DIMENSION(1-jng:,1-jng:,1-jng:) :: jx, jy, jz
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
     REAL(num), DIMENSION(sf_min-1:sf_max+1) :: hx, hy, hz
     REAL(num) :: part_x, part_y, part_z

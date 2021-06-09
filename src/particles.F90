@@ -268,7 +268,7 @@ CONTAINS
         CALL current_deposition_esirkepov(st_half, part_pos_t1p5, (part_weight*part_qfac), jx, jy, jz)
       ELSE
         part_v = (/part_ux, part_uy, part_uz/) * c / gamma
-        CALL current_deposition_simple(current%part_pos, part_v, part_weight * part_q)
+        CALL current_deposition_simple(current%part_pos, part_v, part_weight * part_q, jx, jy, jz)
       END IF
 
       IF (species%solve_fluid) THEN

@@ -119,6 +119,9 @@ PROGRAM pic
   CALL pat_mpi_open(patc_out_fn)
 #endif
 
+  ! Set-up particle push module
+  CALL setup_particle_push
+
   DO
     IF (timer_collect) THEN
       CALL timer_stop(c_timer_step)

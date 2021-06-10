@@ -166,7 +166,7 @@ CONTAINS
     idt0 = 1.0_num / dt
     dto2 = dt_sub / 2.0_num
     dtco2 = c * dto2
-    dtfac = 0.5_num * dt_sub * fac
+    dtfac = 0.5_num * dt_sub
 
     IF (species%solve_fluid) CALL initstep_fluid
 

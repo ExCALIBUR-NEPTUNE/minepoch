@@ -137,6 +137,7 @@ CONTAINS
     ! Spatial derivative of same
     REAL(num), DIMENSION(sf_min-1:sf_max+1,2) :: hdx, hdy, hdz
     REAL(num) :: idx, idy, idz
+    REAL(num), PARAMETER :: fac = (1.0_num / 24.0_num)**c_ndims
 
     idx = 1.0_num / dx
     idy = 1.0_num / dy
@@ -199,12 +200,12 @@ CONTAINS
     ! Actually checking this is messy.
 #include "bspline3/e_part.inc"
 #include "bspline3/b_part.inc"
-    Evec(1) = ex_part
-    Evec(2) = ey_part
-    Evec(3) = ez_part
-    Bvec(1) = Bx_part
-    Bvec(2) = By_part
-    Bvec(3) = Bz_part
+    Evec(1) = ex_part * fac
+    Evec(2) = ey_part * fac
+    Evec(3) = ez_part * fac
+    Bvec(1) = Bx_part * fac
+    Bvec(2) = By_part * fac
+    Bvec(3) = Bz_part * fac
 
     IF (PRESENT(st)) THEN
       ! Temporary storage for further use (e.g. current deposition)

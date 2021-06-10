@@ -116,6 +116,8 @@ PROGRAM field_test
 
   DEALLOCATE(ex, ey, ez, bx, by, bz)
 
+  PRINT*,'All field evauluation tests passed!'
+
 CONTAINS
 
   SUBROUTINE assert(check, msg)

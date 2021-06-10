@@ -56,3 +56,9 @@ jobs:
           mpirun -np 2 ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py --disable_plots
+
+      - name: Unit-Tests
+        run: |
+          cd src/unit_tests/field_evaluation
+          make COMPILER=gfortran
+          ./bin/field_test

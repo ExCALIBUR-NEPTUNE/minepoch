@@ -95,10 +95,10 @@ CONTAINS
           CALL push_particles_dk0(species)
        ELSE IF (species%is_implicit) THEN
           ! TODO - Need new particle push
-          CALL push_particles_lorentz_split(species)
+          CALL push_particles_boris_split(species)
        ELSE
           DO isubstep=1,species%nsubstep
-             CALL push_particles_lorentz_split(species)
+             CALL push_particles_boris_split(species)
           END DO
        END IF
 
@@ -111,7 +111,7 @@ CONTAINS
 
 
 
-  SUBROUTINE push_particles_lorentz_split(species)
+  SUBROUTINE push_particles_boris_split(species)
     TYPE(particle_species), INTENT(INOUT) :: species
     ! 2nd order accurate particle pusher using parabolic weighting
     ! on and off the grid. The calculation of J looks rather odd
@@ -290,7 +290,7 @@ CONTAINS
       CALL update_fluideq
    END IF
 
- END SUBROUTINE push_particles_lorentz_split
+ END SUBROUTINE push_particles_boris_split
 
 
 

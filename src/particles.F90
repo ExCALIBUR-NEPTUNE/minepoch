@@ -94,8 +94,7 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk0(species)
        ELSE IF (species%is_implicit) THEN
-          ! TODO - Need new particle push
-          CALL push_particles_boris_split(species)
+          CALL push_particles_implicit_split(species)
        ELSE
           DO isubstep=1,species%nsubstep
              CALL push_particles_boris_split(species)
@@ -111,7 +110,122 @@ CONTAINS
 
 
 
-  SUBROUTINE push_particles_boris_split(species)
+  SUBROUTINE push_particles_implicit_split(species)
+    TYPE(particle_species), INTENT(INOUT) :: species
+    ! 2nd order accurate particle pusher using parabolic weighting
+    ! on and off the grid. The calculation of J looks rather odd
+    ! Since it works by solving d(rho)/dt = div(J) and doing a 1st order
+    ! Estimate of rho(t+1.5*dt) rather than calculating J directly
+    ! This gives exact charge conservation on the grid
+
+    ! J from a given particle, can be spread over up to 3 cells in
+    ! Each direction due to parabolic weighting. We allocate 4 or 5
+    ! Cells because the position of the particle at t = t+1.5dt is not
+    ! known until later. This part of the algorithm could probably be
+    ! Improved, but at the moment, this is just a straight copy of
+    ! The core of the PSC algorithm
+    INTEGER, PARAMETER :: sf0 = sf_min, sf1 = sf_max
+
+    ! Weighting factors as Eqn 4.77 page 25 of manual
+    ! Eqn 4.77 would be written as
+    ! F(j-1) * gmx + F(j) * g0x + F(j+1) * gpx
+    ! Defined at the particle position
+    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
+    TYPE(particle), POINTER :: current, next
+    INTEGER(i8) :: ipart
+    REAL(num), DIMENSION(3) :: Bvec, Evec
+    REAL(num) :: dt_sub, part_q, part_w, part_m
+    REAL(num), DIMENSION(3) :: pos_guess, vel_guess
+    REAL(num), DIMENSION(3) :: pos_half, vel_half
+    REAL(num), DIMENSION(3) :: pos0, vel0
+    REAL(num), DIMENSION(3) :: v_pred, errorx, errorv
+    REAL(num), PARAMETER :: tolerance = 1e-10_num
+    INTEGER, PARAMETER :: max_iters = 10
+    REAL(num) :: error, alpha, bsq
+    INTEGER :: iters
+
+    dt_sub = dt / species%nsubstep
+
+    gx = 0.0_num
+    gy = 0.0_num
+    gz = 0.0_num
+
+    current => species%attached_list%head
+
+    IF (.NOT. particles_uniformly_distributed) THEN
+      part_w = species%weight
+    END IF
+
+    DO ipart = 1, species%attached_list%count
+      next => current%next
+      IF (particles_uniformly_distributed) THEN
+        part_w = current%weight
+      END IF
+      part_q = current%charge
+      part_m = current%mass
+
+      alpha = 0.5_num * dt_sub * part_q / part_m
+
+      ! Reset iteration count
+      iters = 1
+
+      pos0 = current%part_pos
+      vel0 = current%part_p / part_m
+
+      ! Start guess at t=n
+      pos_guess = pos0
+      vel_guess = vel0
+
+      ! Loop until converged
+      DO
+        ! Calculate half time-step values
+        pos_half = 0.5_num * (pos0 + pos_guess)
+
+        ! Fields at midpoint
+        CALL get_fields_at_point(pos_half,Bvec,Evec)
+
+        ! bfield squared
+        bsq = DOT_PRODUCT(Bvec, Bvec)
+
+        ! Predictor step
+        v_pred = vel0 + alpha * Evec
+        vel_half = (v_pred + alpha * cross(v_pred, Bvec) &
+            + alpha**2 * DOT_PRODUCT(v_pred, Bvec) * Bvec) / (1.0_num + alpha**2 * bsq)
+
+        errorx = ABS(pos_guess - pos0 - vel_half * dt_sub)
+        errorv = ABS(vel_guess - 2.0_num * vel_half + vel0)
+
+        ! The velocity error is normalised by c.
+        ! This might not always be a good choice
+        error = MAX(MAXVAL(errorx), MAXVAL(errorv) / c)
+
+        ! Check convergence
+        IF (error < tolerance) THEN
+          current%part_pos = pos_guess
+          current%part_p = vel_guess * part_m
+          EXIT
+        END IF
+
+        ! Otherwise update guess and iterate again
+        pos_guess = pos0 + dt_sub * vel_half
+        vel_guess = 2.0_num * vel_half - vel0
+        iters = iters + 1
+        IF (iters > max_iters) THEN
+          PRINT*,'Too many iterations: ', iters
+          STOP
+        END IF
+      END DO
+
+      CALL current_deposition_simple(pos_half, vel_half, part_w * part_q, jx, jy, jz)
+
+      current => next
+    END DO
+
+ END SUBROUTINE push_particles_implicit_split
+
+
+
+ SUBROUTINE push_particles_boris_split(species)
     TYPE(particle_species), INTENT(INOUT) :: species
     ! 2nd order accurate particle pusher using parabolic weighting
     ! on and off the grid. The calculation of J looks rather odd

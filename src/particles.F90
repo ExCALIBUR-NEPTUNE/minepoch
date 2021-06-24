@@ -111,26 +111,8 @@ CONTAINS
 
 
   SUBROUTINE push_particles_implicit_split(species)
+
     TYPE(particle_species), INTENT(INOUT) :: species
-    ! 2nd order accurate particle pusher using parabolic weighting
-    ! on and off the grid. The calculation of J looks rather odd
-    ! Since it works by solving d(rho)/dt = div(J) and doing a 1st order
-    ! Estimate of rho(t+1.5*dt) rather than calculating J directly
-    ! This gives exact charge conservation on the grid
-
-    ! J from a given particle, can be spread over up to 3 cells in
-    ! Each direction due to parabolic weighting. We allocate 4 or 5
-    ! Cells because the position of the particle at t = t+1.5dt is not
-    ! known until later. This part of the algorithm could probably be
-    ! Improved, but at the moment, this is just a straight copy of
-    ! The core of the PSC algorithm
-    INTEGER, PARAMETER :: sf0 = sf_min, sf1 = sf_max
-
-    ! Weighting factors as Eqn 4.77 page 25 of manual
-    ! Eqn 4.77 would be written as
-    ! F(j-1) * gmx + F(j) * g0x + F(j+1) * gpx
-    ! Defined at the particle position
-    REAL(num), DIMENSION(sf_min-1:sf_max+1) :: gx, gy, gz
     TYPE(particle), POINTER :: current, next
     INTEGER(i8) :: ipart
     REAL(num), DIMENSION(3) :: Bvec, Evec
@@ -145,10 +127,6 @@ CONTAINS
     INTEGER :: iters
 
     dt_sub = dt / species%nsubstep
-
-    gx = 0.0_num
-    gy = 0.0_num
-    gz = 0.0_num
 
     current => species%attached_list%head
 

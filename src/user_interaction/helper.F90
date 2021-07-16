@@ -325,15 +325,7 @@ CONTAINS
     npart_this_species = species%count
     IF (npart_this_species <= 0) RETURN
 
-    num_valid_cells_local = 0
-    DO iz = 1, nz
-    DO iy = 1, ny
-    DO ix = 1, nx
-      IF (load_list(ix, iy, iz)) &
-          num_valid_cells_local = num_valid_cells_local + 1
-    ENDDO ! ix
-    ENDDO ! iy
-    ENDDO ! iz
+    num_valid_cells_local = COUNT(load_list(1:nx, 1:ny, 1:nz))
 
     IF (species%npart_per_cell >= 0) THEN
       npart_per_cell = FLOOR(species%npart_per_cell, KIND=i8)

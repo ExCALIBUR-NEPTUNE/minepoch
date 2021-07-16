@@ -265,10 +265,9 @@ CONTAINS
           ! can easily over_ride)
           current%charge = species%charge
           current%mass = species%mass
-          current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
-          current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
-          current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
           current%pvol = npart_per_cell
+
+          CALL init_particle_position(current, x(ix), y(iy), z(iz), dx, dy, dz)
 
           ipart = ipart + 1
           current => current%next
@@ -299,6 +298,19 @@ CONTAINS
   END SUBROUTINE non_uniform_load_particles
 
   
+
+  SUBROUTINE init_particle_position(part, x, y, z, dx, dy, dz)
+
+    TYPE(particle), POINTER, INTENT(INOUT) :: part
+    REAL(num), INTENT(IN) :: x, y, z, dx, dy, dz
+
+    part%part_pos(1) = x + (random() - 0.5_num) * dx
+    part%part_pos(2) = y + (random() - 0.5_num) * dy
+    part%part_pos(3) = z + (random() - 0.5_num) * dz
+
+  END SUBROUTINE init_particle_position
+
+
 
   ! This subroutine automatically loads a uniform density of pseudoparticles
   SUBROUTINE load_particles(species, load_list)
@@ -440,10 +452,9 @@ CONTAINS
           ! can easily over_ride)
           current%charge = species%charge
           current%mass = species%mass
-          current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
-          current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
-          current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
           current%pvol = npart_per_cell
+
+          CALL init_particle_position(current, x(ix), y(iy), z(iz), dx, dy, dz)
 
           ipart = ipart + 1
           current => current%next
@@ -490,9 +501,7 @@ CONTAINS
 
         cell_x = ipos + 1
 
-        current%part_pos(1) = x(cell_x) + (random() - 0.5_num) * dx
-        current%part_pos(2) = y(cell_y) + (random() - 0.5_num) * dy
-        current%part_pos(3) = z(cell_z) + (random() - 0.5_num) * dz
+        CALL init_particle_position(current, x(cell_x), y(cell_y), z(cell_z), dx, dy, dz)
 
         current => current%next
       ENDDO

@@ -271,7 +271,7 @@ laser.o: laser.f90 custom_laser.o
 mpi_routines.o: mpi_routines.F90 helper.o
 mpi_subtype_control.o: mpi_subtype_control.f90 shared_data.o
 particle_loading.o: particle_loading.F90 shared_data.o random_generator.o
-particle_temperature.o: particle_temperature.F90 random_generator.o \
+particle_temperature.o: particle_temperature.F90 particle_loading.o \
   shared_data.o
 particles.o: particles.F90 boundary.o current_deposition.o \
   deltaf_loader.o partlist.o utilities.o

@@ -5,6 +5,7 @@ MODULE helper
   USE partlist
   USE deltaf_loader2, ONLY: delstaf_load
   USE utilities
+  USE particle_loading
 
   IMPLICIT NONE
 
@@ -296,19 +297,6 @@ CONTAINS
     ENDIF
 
   END SUBROUTINE non_uniform_load_particles
-
-  
-
-  SUBROUTINE init_particle_position(part, x, y, z, dx, dy, dz)
-
-    TYPE(particle), POINTER, INTENT(INOUT) :: part
-    REAL(num), INTENT(IN) :: x, y, z, dx, dy, dz
-
-    part%part_pos(1) = x + (random() - 0.5_num) * dx
-    part%part_pos(2) = y + (random() - 0.5_num) * dy
-    part%part_pos(3) = z + (random() - 0.5_num) * dz
-
-  END SUBROUTINE init_particle_position
 
 
 

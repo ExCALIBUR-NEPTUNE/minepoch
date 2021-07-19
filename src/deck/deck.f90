@@ -103,6 +103,13 @@ CONTAINS
       END IF
 
       DEALLOCATE(lines)
+
+      ! TODO make this deck configurable
+      n_field_probes = 1
+      ALLOCATE(field_probes(3, n_field_probes))
+      field_probes(1, 1) = 10
+      field_probes(2, 1) = 2
+      field_probes(3, 1) = 2
     END IF
 
   END SUBROUTINE read_deck

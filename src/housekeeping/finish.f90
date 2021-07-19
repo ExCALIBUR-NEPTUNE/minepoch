@@ -66,6 +66,8 @@ CONTAINS
       DEALLOCATE(iolist, STAT=stat)
     ENDDO
 
+    DEALLOCATE(field_probes)
+
     CALL deallocate_lasers
 
     CALL MPI_COMM_FREE(comm, errcode)

@@ -392,7 +392,7 @@ CONTAINS
       ALLOCATE(bx_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
       ALLOCATE(by_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
       ALLOCATE(bz_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
-   ENDIF
+    ENDIF
 
     CALL remap_field(ex, temp)
     DEALLOCATE(ex)

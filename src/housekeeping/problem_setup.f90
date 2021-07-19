@@ -134,7 +134,7 @@ CONTAINS
       by = 0.0_num
 
       DO i = 1-ng, nx+ng
-        xp = x_grid_min_local + x(i)
+        xp = x(i)
         ey(i,:,:) = em_wave_mag * COS(xp)
         xp = xp + 0.5_num * dx
         bz(i,:,:) = em_wave_mag * COS(xp) / c

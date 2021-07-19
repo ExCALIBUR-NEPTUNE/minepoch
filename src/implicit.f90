@@ -81,8 +81,26 @@ CONTAINS
       IF (0.0_num * max_delta < epsilon) converged = .TRUE.
 
       ! Update x
-      x = x + dir
+      x = x - dir
     END DO
+
+    ! Unpack trial vector
+    DO iz = 1, nz
+      DO iy = 1, ny
+        DO ix = 1, nx
+          row = index1d(ix,iy,iz)
+          ex(ix,iy,iz) = x(row+1)
+          ey(ix,iy,iz) = x(row+2)
+          ez(ix,iy,iz) = x(row+3)
+          bx(ix,iy,iz) = x(row+4)
+          by(ix,iy,iz) = x(row+5)
+          bz(ix,iy,iz) = x(row+6)
+        END DO
+      END DO
+    END DO
+
+    CALL efield_bcs(ex, ey, ez, ng)
+    CALL bfield_final_bcs(bx, by, bz, ng)
 
     DEALLOCATE(x, dir)
     DEALLOCATE(ex0, ey0, ez0, bx0, by0, bz0)
@@ -123,7 +141,7 @@ CONTAINS
     ! Now calculate rhs
     CALL calculate_rhs(ex, ey, ez, bx, by, bz, rhs)
 
-    F = 0.5_num * (x - x0) / dt - 0.5_num*(rhs + rhs0)
+    f = (x - x0) / dt - 0.5_num*(rhs + rhs0)
 
     DEALLOCATE(rhs)
 

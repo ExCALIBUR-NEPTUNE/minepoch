@@ -19,6 +19,14 @@ The requirements are minimal, only a Fortran compiler and MPI are required to co
 the code. The code is routinely run on both Linux and OS X, and tested with gfortran, but
 other compilers (e.g. `make COMPILER=intel`) ought to work.
 
+### Compiling implicit PIC
+
+The implicit solver requires Trilinos. To compile:
+
+```
+make COMPILER=gfortran DEF=-DTRILINOS
+```
+
 ## Running the code
 
 Minepoch is controlled using a Fortran namelist, which is read from `Data/input.deck`. The file

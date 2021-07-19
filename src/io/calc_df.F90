@@ -19,8 +19,6 @@ CONTAINS
 
     particle_energy = 0.0_num
 
-    IF (n_species < 1) RETURN
-
     ! Sum over all particles to calculate total kinetic energy
     next_species => species_list
     DO ispecies = 1, n_species

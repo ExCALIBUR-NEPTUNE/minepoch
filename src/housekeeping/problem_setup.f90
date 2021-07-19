@@ -78,16 +78,18 @@ CONTAINS
     particle_push_start_time = 0.0_num
     n_species = 0
     fixed_fields = .FALSE.
-    
+
   END SUBROUTINE control_initialise
 
 
 
   SUBROUTINE fields_initialise(problem)
-    INTEGER :: i,j,k
-    REAL(num) :: xp
 
     CHARACTER(LEN=c_max_string_length), INTENT(IN) :: problem
+    INTEGER :: i,j,k
+    REAL(num) :: xp
+    REAL(num), PARAMETER :: em_wave_mag = 1.0_num
+
 
     ! Could include problem specific fields here.
     ! Default to zero
@@ -98,24 +100,25 @@ CONTAINS
     by = 0.0_num
     bz = 0.0_num
     SELECT CASE (TRIM(problem))
+
     CASE ('one_stream')
        IF (.false.) THEN
           bx = 1.0_num
           ey = 1.0_num
-          
+
           !To do this right, need to get the offsets to the grid positions.
           do i=1-ng,nx+ng
              do j=1-ng,ny+ng
                 do k=1-ng,nz+ng
-                   !Correct offset for bz, is there a variable 
+                   !Correct offset for bz, is there a variable
                    ! storing offset per field/direction?
                    xp = x_grid_min_local+(i-0.5_num)*dx
                    bz(i,j,k) = cos(xp)
-                   
                 end do
              end do
           end do
        END IF
+
     CASE ('drift_kin_default')
        ex = 0.0_num
        ey = 0.0_num
@@ -123,8 +126,24 @@ CONTAINS
        bx = 0.0_num
        by = 0.0_num
        bz = 1.0_num
+
+    CASE ('em_wave')
+      ex = 0.0_num
+      ez = 0.0_num
+      bx = 0.0_num
+      by = 0.0_num
+
+      DO i = 1-ng, nx+ng
+        xp = x_grid_min_local + x(i)
+        ey(i,:,:) = em_wave_mag * COS(xp)
+        xp = xp + 0.5_num * dx
+        bz(i,:,:) = em_wave_mag * COS(xp) / c
+      END DO
+
     CASE default
+
     END SELECT
+
   END SUBROUTINE fields_initialise
 
 

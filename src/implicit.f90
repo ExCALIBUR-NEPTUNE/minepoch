@@ -19,7 +19,7 @@ CONTAINS
   SUBROUTINE solve_implicit_pic
 
     LOGICAL :: converged
-    INTEGER :: ierr, ix, iy, iz, row
+    INTEGER :: ix, iy, iz, row
     REAL(C_DOUBLE), DIMENSION(:), ALLOCATABLE :: x, dir
     REAL(C_DOUBLE) :: max_delta
     ! Converged if max change < epsilon.
@@ -88,12 +88,6 @@ CONTAINS
     DEALLOCATE(ex0, ey0, ez0, bx0, by0, bz0)
     DEALLOCATE(x0, rhs0)
 
-    IF (rank == 0) THEN
-      WRITE(*,*) 'Implicit PIC not implemented yet!'
-    END IF
-
-    CALL MPI_ABORT(MPI_COMM_WORLD, c_err_not_implemented, ierr)
-
   END SUBROUTINE solve_implicit_pic
 
 
@@ -103,7 +97,7 @@ CONTAINS
     REAL(C_DOUBLE), DIMENSION(nvar_solve*nx*ny*nz), INTENT(IN) :: x
     REAL(C_DOUBLE), DIMENSION(nvar_solve*nx*ny*nz), INTENT(OUT) :: f
     REAL(num), DIMENSION(:), ALLOCATABLE :: rhs
-    INTEGER :: ix, iy, iz, row, ierr
+    INTEGER :: ix, iy, iz, row
 
     ALLOCATE(rhs(nvar_solve*nx*ny*nz))
 

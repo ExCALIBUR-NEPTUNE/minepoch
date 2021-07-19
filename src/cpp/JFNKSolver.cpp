@@ -41,7 +41,8 @@ JFNKSolver::JFNKSolver(int NumMyElements_, int * MyGlobalElements, MPI_Comm &Old
 
   // Set output level.
   // Possible options: AZ_none, AZ_summary, AZ_warning, AZ_last, AZ_all
-  AztecSolver->SetAztecOption(AZ_output,AZ_summary);
+  // AztecSolver->SetAztecOption(AZ_output,AZ_summary);
+  AztecSolver->SetAztecOption(AZ_output, AZ_none);
 
   // Turn off built-in preconditioning method
   // Any preconditioning options should be set here.
@@ -87,9 +88,9 @@ void JFNKSolver::Solve(double *x0, double *p) {
 
   Interface->computeF(guess,*rhs,JFNKInterface::Residual);
 
-  rhs->Norm2(&norm);
   // TODO toggle this output
-  std::cout << "||b|| =" << norm << std::endl;
+  // rhs->Norm2(&norm);
+  // std::cout << "||b|| =" << norm << std::endl;
 
   JacFree->computeJacobian(guess,*JacFree);
 

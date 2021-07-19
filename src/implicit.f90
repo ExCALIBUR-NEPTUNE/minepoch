@@ -84,6 +84,23 @@ CONTAINS
       x = x - dir
     END DO
 
+    CALL unpack_vector(x, ex, ey, ez, bx, by, bz)
+
+    DEALLOCATE(x, dir)
+    DEALLOCATE(ex0, ey0, ez0, bx0, by0, bz0)
+    DEALLOCATE(x0, rhs0)
+
+  END SUBROUTINE solve_implicit_pic
+
+
+
+  SUBROUTINE unpack_vector(x, ex, ey, ez, bx, by, bz)
+
+    REAL(C_DOUBLE), DIMENSION(nvar_solve*nx*ny*nz), INTENT(IN) :: x
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(OUT) :: ex, ey, ez
+    REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(OUT) :: bx, by, bz
+    INTEGER :: ix, iy, iz, row
+
     ! Unpack trial vector
     DO iz = 1, nz
       DO iy = 1, ny
@@ -102,11 +119,7 @@ CONTAINS
     CALL efield_bcs(ex, ey, ez, ng)
     CALL bfield_final_bcs(bx, by, bz, ng)
 
-    DEALLOCATE(x, dir)
-    DEALLOCATE(ex0, ey0, ez0, bx0, by0, bz0)
-    DEALLOCATE(x0, rhs0)
-
-  END SUBROUTINE solve_implicit_pic
+  END SUBROUTINE unpack_vector
 
 
 
@@ -218,7 +231,7 @@ CONTAINS
     INTEGER(C_INT) :: index1d
     INTEGER, INTENT(IN) :: ix, iy, iz
 
-    index1d = (ix-1) + (iy-1) * nx + (iz-1) * nx * ny
+    index1d = ((ix-1) + (iy-1) * nx + (iz-1) * nx * ny) * nvar_solve
 
   END FUNCTION index1d
 

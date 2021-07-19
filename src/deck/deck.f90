@@ -15,13 +15,16 @@ CONTAINS
     CHARACTER(LEN=1024), ALLOCATABLE, SAVE :: lines(:)
     LOGICAL, SAVE :: first = .TRUE.
     INTEGER, SAVE :: nlines = 0
+    INTEGER, DIMENSION(:), ALLOCATABLE :: x_probes, y_probes, z_probes
 
     NAMELIST/control/ problem, x_min, x_max, y_min, y_max, z_min, z_max, &
          nx_global, ny_global, nz_global, nprocx, nprocy, nprocz, &
          allow_cpu_reduce, timer_collect, use_balance, use_random_seed, &
          npart_global, nsteps, t_end, dt_multiplier, dlb_threshold, &
          stdout_frequency, particle_push_start_time, n_species, &
-         fixed_fields, global_substeps, use_esirkepov
+         fixed_fields, global_substeps, use_esirkepov, n_field_probes
+
+    NAMELIST/field_probe_positions/ x_probes, y_probes, z_probes
 
     IF (first) THEN
       ! Set the default problem here
@@ -102,14 +105,25 @@ CONTAINS
         CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
       END IF
 
+      IF (n_field_probes > 0) THEN
+        ALLOCATE(field_probes(3, n_field_probes))
+        ALLOCATE(x_probes(n_field_probes))
+        ALLOCATE(y_probes(n_field_probes))
+        ALLOCATE(z_probes(n_field_probes))
+        ! Read probe positions
+        READ(lines, NML=field_probe_positions, IOSTAT=ierr)
+        IF (ierr /= 0) THEN
+          IF (rank == 0) PRINT *, 'Error reading field probe namelist'
+          CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
+        END IF
+        field_probes(1, :) = x_probes
+        field_probes(2, :) = y_probes
+        field_probes(3, :) = z_probes
+        DEALLOCATE(x_probes, y_probes, z_probes)
+      END IF
+
       DEALLOCATE(lines)
 
-      ! TODO make this deck configurable
-      n_field_probes = 1
-      ALLOCATE(field_probes(3, n_field_probes))
-      field_probes(1, 1) = 10
-      field_probes(2, 1) = 2
-      field_probes(3, 1) = 2
     END IF
 
   END SUBROUTINE read_deck

@@ -66,7 +66,7 @@ CONTAINS
       DEALLOCATE(iolist, STAT=stat)
     ENDDO
 
-    DEALLOCATE(field_probes)
+    IF (ALLOCATED(field_probes)) DEALLOCATE(field_probes)
 
     CALL deallocate_lasers
 

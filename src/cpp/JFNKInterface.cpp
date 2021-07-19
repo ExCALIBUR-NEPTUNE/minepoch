@@ -1,9 +1,9 @@
 #include "JFNKInterface.h"
 
-//extern "C" {
-  // External Fortran routine to calculate residual
-  // void computef(double *,double *,int *);
-//}
+extern "C" {
+  //  External Fortran routine to calculate residual
+  void jfnk_computef(double *,double *);
+}
 
 JFNKInterface::JFNKInterface(){
 }
@@ -35,10 +35,8 @@ bool JFNKInterface::computeF(const Epetra_Vector& x,Epetra_Vector& f
     iflag = 1;
   }
 
-  std::cout << "JFNKInterface::computeF not implemented yet!" << std::endl;
-  MPI_Abort(MPI_COMM_WORLD, c_err_not_implemented);
-  // Compute rhs by calling the external Fortran routine
-  // computef(xptr,fptr,&iflag);
+  // Compute rhs by calling the external Fortran routine. Should an iflag be passed here?
+  jfnk_computef(xptr,fptr);
 
   return true;
 }

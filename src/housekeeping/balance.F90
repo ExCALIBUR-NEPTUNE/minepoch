@@ -284,6 +284,7 @@ CONTAINS
     ! so we still have to balance the arrays.
     ! It is done slightly differently since the arrays may be
     ! a different size.
+    ! Same logic for drift-kinetic current and fields
 
     IF (overriding) THEN
       ALLOCATE(temp2(-2:nx+3, -2:ny+3, -2:nz+3))
@@ -309,7 +310,60 @@ CONTAINS
       jz(0:nx_new+1, 0:ny_new+1, 0:nz_new+1) = &
           temp(0:nx_new+1, 0:ny_new+1, 0:nz_new+1)
 
+      ! Drift-kinetic current
+      temp2(0:nx+1, 0:ny+1, 0:nz+1) = jx_d(0:nx+1, 0:ny+1, 0:nz+1)
+      CALL remap_field(temp2, temp)
+      DEALLOCATE(jx_d)
+      ALLOCATE(jx_d(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
+      jx_d(0:nx_new+1, 0:ny_new+1, 0:nz_new+1) = &
+          temp(0:nx_new+1, 0:ny_new+1, 0:nz_new+1)
+
+      temp2(0:nx+1, 0:ny+1, 0:nz+1) = jy_d(0:nx+1, 0:ny+1, 0:nz+1)
+      CALL remap_field(temp2, temp)
+      DEALLOCATE(jy_d)
+      ALLOCATE(jy_d(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
+      jy_d(0:nx_new+1, 0:ny_new+1, 0:nz_new+1) = &
+          temp(0:nx_new+1, 0:ny_new+1, 0:nz_new+1)
+
+      temp2(0:nx+1, 0:ny+1, 0:nz+1) = jz_d(0:nx+1, 0:ny+1, 0:nz+1)
+      CALL remap_field(temp2, temp)
+      DEALLOCATE(jz_d)
+      ALLOCATE(jz_d(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
+      jz_d(0:nx_new+1, 0:ny_new+1, 0:nz_new+1) = &
+          temp(0:nx_new+1, 0:ny_new+1, 0:nz_new+1)
+
       DEALLOCATE(temp2)
+
+      CALL remap_field(ex_back, temp)
+      DEALLOCATE(ex_back)
+      ALLOCATE(ex_back(-2:nx_new+3, -2:ny_new+3, -2:nz_new+3))
+      ex_back = temp
+
+      CALL remap_field(ey_back, temp)
+      DEALLOCATE(ey_back)
+      ALLOCATE(ey_back(-2:nx_new+3, -2:ny_new+3, -2:nz_new+3))
+      ey_back = temp
+
+      CALL remap_field(ez_back, temp)
+      DEALLOCATE(ez_back)
+      ALLOCATE(ez_back(-2:nx_new+3, -2:ny_new+3, -2:nz_new+3))
+      ez_back = temp
+
+      CALL remap_field(bx_back, temp)
+      DEALLOCATE(bx_back)
+      ALLOCATE(bx_back(-2:nx_new+3, -2:ny_new+3, -2:nz_new+3))
+      bx_back = temp
+
+      CALL remap_field(by_back, temp)
+      DEALLOCATE(by_back)
+      ALLOCATE(by_back(-2:nx_new+3, -2:ny_new+3, -2:nz_new+3))
+      by_back = temp
+
+      CALL remap_field(bz_back, temp)
+      DEALLOCATE(bz_back)
+      ALLOCATE(bz_back(-2:nx_new+3, -2:ny_new+3, -2:nz_new+3))
+      bz_back = temp
+
     ELSE
       DEALLOCATE(jx)
       DEALLOCATE(jy)
@@ -317,7 +371,28 @@ CONTAINS
       ALLOCATE(jx(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
       ALLOCATE(jy(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
       ALLOCATE(jz(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
-    ENDIF
+
+      DEALLOCATE(jx_d)
+      DEALLOCATE(jy_d)
+      DEALLOCATE(jz_d)
+      ALLOCATE(jx_d(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
+      ALLOCATE(jy_d(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
+      ALLOCATE(jz_d(1-jng:nx_new+jng, 1-jng:ny_new+jng, 1-jng:nz_new+jng))
+
+      DEALLOCATE(ex_back)
+      DEALLOCATE(ey_back)
+      DEALLOCATE(ez_back)
+      ALLOCATE(ex_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
+      ALLOCATE(ey_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
+      ALLOCATE(ez_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
+
+      DEALLOCATE(bx_back)
+      DEALLOCATE(by_back)
+      DEALLOCATE(bz_back)
+      ALLOCATE(bx_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
+      ALLOCATE(by_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
+      ALLOCATE(bz_back(1-ng:nx_new+ng, 1-ng:ny_new+ng, 1-ng:nz_new+ng))
+   ENDIF
 
     CALL remap_field(ex, temp)
     DEALLOCATE(ex)

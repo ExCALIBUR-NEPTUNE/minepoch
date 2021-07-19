@@ -75,10 +75,10 @@ CONTAINS
       CALL solve_gmres(x, dir)
 
       ! TODO - Consider normalisations and use in place of MAX(x, c_tiny)
-      max_delta = MAXVAL(ABS(x - dir) / MAX(ABS(x), c_tiny))
+      max_delta = MAXVAL(ABS(dir) / MAX(ABS(x), c_tiny))
 
       ! TODO Implement MPI and checking
-      IF (0.0_num * max_delta < epsilon) converged = .TRUE.
+      IF (max_delta < epsilon) converged = .TRUE.
 
       ! Update x
       x = x - dir

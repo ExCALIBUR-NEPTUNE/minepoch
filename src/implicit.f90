@@ -8,6 +8,8 @@ MODULE implicit
 
   REAL(num), DIMENSION(:,:,:), ALLOCATABLE :: ex0, ey0, ez0, bx0, by0, bz0
   REAL(num), DIMENSION(:), ALLOCATABLE :: x0, rhs0
+  ! Number of independent variables.
+  INTEGER, PARAMETER :: nvar_solve = 6
 
   PRIVATE
   PUBLIC :: solve_implicit_pic, computef, init_1d_index
@@ -23,11 +25,9 @@ CONTAINS
     ! Converged if max change < epsilon.
     ! TODO make this user configurable
     REAL(num), PARAMETER :: epsilon = 1e-6_num
-    ! Number of independent variables.
-    INTEGER, PARAMETER :: nvar = 6
     INTEGER :: problem_size
 
-    problem_size = nx * ny * nz * nvar
+    problem_size = nx * ny * nz * nvar_solve
 
     ALLOCATE(x(problem_size), dir(problem_size))
     ALLOCATE(x0(problem_size), rhs0(problem_size))
@@ -66,6 +66,7 @@ CONTAINS
 
     ! Store x0, calculate rhs0
     x0 = x
+
     CALL calculate_rhs(ex, ey, ez, bx, by, bz, rhs0)
 
     DO WHILE (.NOT. converged)
@@ -99,12 +100,12 @@ CONTAINS
 
   SUBROUTINE computef(x, f) BIND(c, name='jfnk_computef')
 
-    REAL(C_DOUBLE), DIMENSION(nvar*nx*ny*nz), INTENT(IN) :: x
-    REAL(C_DOUBLE), DIMENSION(nvar*nx*ny*nz), INTENT(OUT) :: f
+    REAL(C_DOUBLE), DIMENSION(nvar_solve*nx*ny*nz), INTENT(IN) :: x
+    REAL(C_DOUBLE), DIMENSION(nvar_solve*nx*ny*nz), INTENT(OUT) :: f
     REAL(num), DIMENSION(:), ALLOCATABLE :: rhs
     INTEGER :: ix, iy, iz, row, ierr
 
-    ALLOCATE(rhs(nvar*nx*ny*nz))
+    ALLOCATE(rhs(nvar_solve*nx*ny*nz))
 
     ! Unpack trial vector
     DO iz = 1, nz
@@ -140,7 +141,7 @@ CONTAINS
 
     REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(IN) :: ex, ey, ez
     REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(IN) :: bx, by, bz
-    REAL(num), DIMENSION(nx*ny*nz*nvar), INTENT(OUT) :: rhs
+    REAL(num), DIMENSION(nx*ny*nz*nvar_solve), INTENT(OUT) :: rhs
     REAL(num) :: c2idx, c2idy, c2idz, idx, idy, idz
     INTEGER :: ix, iy, iz, row
 
@@ -181,7 +182,6 @@ CONTAINS
   SUBROUTINE init_1d_index
 
     INTEGER :: ix, iy, iz, row, i, ivar
-    INTEGER, PARAMETER :: nvar = 6
 
     i = 1
 
@@ -189,7 +189,7 @@ CONTAINS
       DO iy = 1, ny
         DO ix = 1, nx
           row = index1d(ix,iy,iz)
-          DO ivar = 0, nvar-1
+          DO ivar = 0, nvar_solve-1
             linear_index(i) = row + ivar
             i = i + 1
           END DO

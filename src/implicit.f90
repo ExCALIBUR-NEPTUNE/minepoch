@@ -104,12 +104,6 @@ CONTAINS
     REAL(num), DIMENSION(:), ALLOCATABLE :: rhs
     INTEGER :: ix, iy, iz, row, ierr
 
-    IF (rank == 0) THEN
-      WRITE(*,*) 'ComputeF not implemented yet!'
-    END IF
-
-    CALL MPI_ABORT(MPI_COMM_WORLD, c_err_not_implemented, ierr)
-
     ALLOCATE(rhs(nvar*nx*ny*nz))
 
     ! Unpack trial vector
@@ -134,8 +128,8 @@ CONTAINS
     ! Now calculate rhs
     CALL calculate_rhs(ex, ey, ez, bx, by, bz, rhs)
 
-    ! Fill the residual vector, F
-    F = 0.0_num
+    F = 0.5_num * (x - x0) / dt - 0.5_num*(rhs + rhs0)
+
     DEALLOCATE(rhs)
 
   END SUBROUTINE computef
@@ -147,9 +141,38 @@ CONTAINS
     REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(IN) :: ex, ey, ez
     REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(IN) :: bx, by, bz
     REAL(num), DIMENSION(nx*ny*nz*nvar), INTENT(OUT) :: rhs
+    REAL(num) :: c2idx, c2idy, c2idz, idx, idy, idz
+    INTEGER :: ix, iy, iz, row
 
-    ! TODO FixME
-    rhs = 0.0_num
+    idx = 1.0_num / dx
+    idy = 1.0_num / dy
+    idz = 1.0_num / dz
+    c2idx = c**2 * idx
+    c2idy = c**2 * idy
+    c2idz = c**2 * idz
+
+    ! Need to add j here
+    ! CALL particle push
+
+    DO iz = 1, nz
+      DO iy = 1, ny
+        DO ix = 1, nx
+          row = index1d(ix,iy,iz)
+          rhs(row+1) = c2idy * (bz(ix  , iy  , iz  ) - bz(ix  , iy-1, iz  )) &
+                     - c2idz * (by(ix  , iy  , iz  ) - by(ix  , iy  , iz-1))
+          rhs(row+2) = c2idz * (bx(ix  , iy  , iz  ) - bx(ix  , iy  , iz-1)) &
+                     - c2idx * (bz(ix  , iy  , iz  ) - bz(ix-1, iy  , iz  ))
+          rhs(row+3) = c2idx * (by(ix  , iy  , iz  ) - by(ix-1, iy  , iz  )) &
+                     - c2idy * (bx(ix  , iy  , iz  ) - bx(ix  , iy-1, iz  ))
+          rhs(row+4) = idz * (ey(ix  , iy  , iz+1) - ey(ix  , iy  , iz  )) &
+                     - idy * (ez(ix  , iy+1, iz  ) - ez(ix  , iy  , iz  ))
+          rhs(row+5) = idx * (ez(ix+1, iy  , iz  ) - ez(ix  , iy  , iz  )) &
+                     - idz * (ex(ix  , iy  , iz+1) - ex(ix  , iy  , iz  ))
+          rhs(row+6) = idy * (ex(ix  , iy+1, iz  ) - ex(ix  , iy  , iz  )) &
+                     - idx * (ey(ix+1, iy  , iz  ) - ey(ix  , iy  , iz  ))
+        END DO
+      END DO
+    END DO
 
   END SUBROUTINE calculate_rhs
 

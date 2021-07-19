@@ -26,7 +26,6 @@ CONTAINS
          explicit_pic
     NAMELIST/field_probe_positions/ x_probes, y_probes, z_probes
 
-
     IF (first) THEN
       ! Set the default problem here
       problem = 'two_stream'

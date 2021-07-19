@@ -88,7 +88,7 @@ CONTAINS
     CHARACTER(LEN=c_max_string_length), INTENT(IN) :: problem
     INTEGER :: i,j,k
     REAL(num) :: xp
-    REAL(num), PARAMETER :: em_wave_mag = 1.0_num
+    REAL(num), PARAMETER :: em_wave_mag = 1e6_num
 
 
     ! Could include problem specific fields here.

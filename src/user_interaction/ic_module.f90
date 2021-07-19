@@ -162,7 +162,7 @@ CONTAINS
 
     IF (deck_state == c_ds_first) THEN
       ! Set control variables here
-      nx_global = 64
+      nx_global = 256
       ny_global = 4
       nz_global = 4
       x_min = 0.0_num
@@ -175,7 +175,7 @@ CONTAINS
       z_min = x_min
       z_max = x_max * REAL(nz_global, num) / REAL(nx_global, num)
 
-      t_end = 2.0_num * pi / c
+      t_end = 20.0_num * pi / c
       RETURN
     END IF
 

@@ -186,7 +186,7 @@ FC_INFO := $(shell ${FC} --version 2>/dev/null \
 SRCFILES = balance.F90 boundary.f90 calc_df.F90 current_deposition.F90 \
   custom_laser.f90 deck.f90 diagnostics.F90 epoch3d.F90 fields.f90 finish.f90 \
   helper.F90 ic_module.f90 laser.f90 mpi_routines.F90 mpi_subtype_control.f90 \
-  particle_loading.F90 particle_temperature.F90 particles.F90 partlist.F90 \
+  particle_init.F90 particle_temperature.F90 particles.F90 partlist.F90 \
   problem_setup.f90 random_generator.f90 redblack_module.f90 setup.F90 \
   shared_data.F90 strings.f90 timer.f90 utilities.F90 version_data.F90 \
   welcome.F90 deltaf_loader.F90
@@ -264,14 +264,14 @@ epoch3d.o: epoch3d.F90 balance.o deck.o diagnostics.o fields.o finish.o \
   shared_data.o setup.o welcome.o pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
-helper.o: helper.F90 boundary.o deltaf_loader.o particle_loading.o partlist.o \
+helper.o: helper.F90 boundary.o deltaf_loader.o particle_init.o partlist.o \
   strings.o utilities.o
 ic_module.o: ic_module.f90 helper.o setup.o shared_data.o fields.o
 laser.o: laser.f90 custom_laser.o
 mpi_routines.o: mpi_routines.F90 helper.o
 mpi_subtype_control.o: mpi_subtype_control.f90 shared_data.o
-particle_loading.o: particle_loading.F90 shared_data.o random_generator.o
-particle_temperature.o: particle_temperature.F90 particle_loading.o \
+particle_init.o: particle_init.F90 shared_data.o random_generator.o
+particle_temperature.o: particle_temperature.F90 particle_init.o \
   shared_data.o
 particles.o: particles.F90 boundary.o current_deposition.o \
   deltaf_loader.o partlist.o utilities.o

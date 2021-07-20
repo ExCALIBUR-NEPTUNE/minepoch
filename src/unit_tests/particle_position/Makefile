@@ -184,7 +184,7 @@ FC_INFO := $(shell ${FC} --version 2>/dev/null \
     || ${FC} -V 2>&1 | grep '[a-zA-Z]' | head -n 1)
 
 SRCFILES = particle_load_test.F90 shared_data.F90 random_generator.f90 \
-  particle_loading.F90
+  particle_init.F90
 
 OBJFILES := $(SRCFILES:.f90=.o)
 OBJFILES := $(OBJFILES:.F90=.o)
@@ -242,7 +242,7 @@ $(OBJDIR):
 # All the dependencies
 
 particle_load_test.o: particle_load_test.F90 random_generator.o shared_data.o \
-  particle_loading.o
-particle_lading.o: particle_loading.F90 random_generator.o shared_data.o
+  particle_init.o
+particle_lading.o: particle_init.F90 random_generator.o shared_data.o
 random_generator.o: random_generator.f90
 shared_data.o: shared_data.F90

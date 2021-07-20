@@ -1,6 +1,6 @@
 MODULE particle_temperature
 
-  USE particle_loading
+  USE particle_init
   USE shared_data
 
   IMPLICIT NONE

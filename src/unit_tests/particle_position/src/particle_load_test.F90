@@ -1,6 +1,6 @@
 PROGRAM particle_load_test
 
-  USE particle_loading
+  USE particle_init
   USE random_generator
   USE shared_data
 

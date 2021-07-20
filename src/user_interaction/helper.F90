@@ -4,8 +4,8 @@ MODULE helper
   USE strings
   USE partlist
   USE deltaf_loader2, ONLY: delstaf_load
+  USE particle_init
   USE utilities
-  USE particle_loading
 
   IMPLICIT NONE
 

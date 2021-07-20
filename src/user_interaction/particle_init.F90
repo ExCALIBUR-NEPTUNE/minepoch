@@ -1,4 +1,4 @@
-MODULE particle_loading
+MODULE particle_init
 
   USE shared_data
   USE random_generator
@@ -61,4 +61,4 @@ CONTAINS
 
   END FUNCTION momentum_from_temperature
 
-END MODULE particle_loading
+END MODULE particle_init

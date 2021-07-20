@@ -23,13 +23,12 @@ CONTAINS
 
     REAL(num), INTENT(IN) :: mass, temperature, drift
     REAL(num) :: momentum_from_temperature
-
     REAL(num) :: stdev
     REAL(num) :: rand1, rand2, w
     REAL(num), SAVE :: val
     LOGICAL, SAVE :: cached = .FALSE.
 
-        ! This is a basic polar Box-Muller transform
+    ! This is a basic polar Box-Muller transform
     ! It generates gaussian distributed random numbers
     ! The standard deviation (stdev) is related to temperature
 

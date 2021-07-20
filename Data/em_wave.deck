@@ -1,0 +1,15 @@
+&CONTROL
+  problem = 'em_wave',
+  stdout_frequency = 25,
+  n_field_probes = 2,
+/
+
+! List of positions to output field time-histories
+! Two files will be produced:
+! 1. ix=10, iy=2, iz=2
+! 2. ix=180, iy=2, iz=2
+&FIELD_PROBE_POSITIONS
+  x_probes = 10, 180,
+  y_probes = 2, 2,
+  z_probes = 2, 2,
+/

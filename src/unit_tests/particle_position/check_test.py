@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import argparse
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="""Tool for validating uniform particle loading
@@ -14,51 +15,51 @@ def parse_arguments():
     group = parser.add_argument_group("Particle Distribution")
 
     group.add_argument(
-	"--x0",
+        "--x0",
         default=0.0,
-	type=float,
-	help="Centre of region in x-coordinate",
+        type=float,
+        help="Centre of region in x-coordinate",
         nargs="?",
     )
 
     group.add_argument(
-	"--dx",
-	default=1.0,
-	type=float,
-	help="Width of region in x",
-	nargs="?",
+        "--dx",
+        default=1.0,
+        type=float,
+        help="Width of region in x",
+        nargs="?",
     )
 
     group.add_argument(
-	"--y0",
+        "--y0",
         default=2.0,
-	type=float,
-	help="Centre of region in y-coordinate",
+        type=float,
+        help="Centre of region in y-coordinate",
         nargs="?",
     )
 
     group.add_argument(
-	"--dy",
-	default=2.0,
-	type=float,
-	help="Width of region in y",
-	nargs="?",
+        "--dy",
+        default=2.0,
+        type=float,
+        help="Width of region in y",
+        nargs="?",
     )
 
     group.add_argument(
-	"--z0",
+        "--z0",
         default=4.0,
-	type=float,
-	help="Centre of region in z-coordinate",
+        type=float,
+        help="Centre of region in z-coordinate",
         nargs="?",
     )
 
     group.add_argument(
-	"--dz",
-	default=3.0,
-	type=float,
-	help="Width of region in z",
-	nargs="?",
+        "--dz",
+        default=3.0,
+        type=float,
+        help="Width of region in z",
+        nargs="?",
     )
 
     parser.add_argument("--filename",
@@ -75,26 +76,28 @@ def parse_arguments():
 
     return parser.parse_args()
 
+
 def check_dist(data, x0, dx):
 
-    dis = stats.uniform(loc = x0 - 0.5*dx, scale=dx)
+    dis = stats.uniform(loc=x0 - 0.5*dx, scale=dx)
     return stats.cramervonmises(data, dis.cdf)
+
 
 def check_data(options):
 
     pos = np.loadtxt(options.filename)
 
-    p = check_dist(pos[:,0], options.x0, options.dx).pvalue
+    p = check_dist(pos[:, 0], options.x0, options.dx).pvalue
     if (p < options.pvalue):
         print('x distribution check failed! pvalue = %.4E' % p)
         return 1
 
-    p = check_dist(pos[:,1], options.y0, options.dy).pvalue
+    p = check_dist(pos[:, 1], options.y0, options.dy).pvalue
     if (p < options.pvalue):
         print('y distribution check failed! pvalue = %.4E' % p)
         return 1
 
-    p = check_dist(pos[:,2], options.z0, options.dz).pvalue
+    p = check_dist(pos[:, 2], options.z0, options.dz).pvalue
     if (p < options.pvalue):
         print('z distribution check failed! pvalue = %.4E' % p)
         return 1
@@ -102,6 +105,7 @@ def check_data(options):
     print('Particle position checks passed!')
 
     return 0
+
 
 if __name__ == "__main__":
     options = parse_arguments()

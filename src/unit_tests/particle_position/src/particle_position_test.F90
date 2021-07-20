@@ -1,4 +1,4 @@
-PROGRAM particle_load_test
+PROGRAM particle_position_test
 
   USE particle_init
   USE random_generator
@@ -30,4 +30,4 @@ PROGRAM particle_load_test
 
   DEALLOCATE(current)
 
-END PROGRAM particle_load_test
+END PROGRAM particle_position_test

@@ -54,6 +54,13 @@ jobs:
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py --disable_plots
 
+      - name: Test-EM-Wave
+        run: |
+          cp Data/em_wave.deck Data/input.deck
+          mpirun -np 2 ./bin/epoch3d
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python3 minepoch_py/energy.py --disable_plots --energy_conservation=2e-11
+
       - name: Unit-Tests
         run: |
           cd src/unit_tests/field_evaluation

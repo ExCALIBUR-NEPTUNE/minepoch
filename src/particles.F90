@@ -94,7 +94,7 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk0(species)
        ELSE IF (species%is_implicit) THEN
-          CALL push_particles_implicit_split(species)
+          CALL push_particles_implicit_split(species, .TRUE.)
        ELSE
           DO isubstep=1,species%nsubstep
              CALL push_particles_boris_split(species)
@@ -110,9 +110,10 @@ CONTAINS
 
 
 
-  SUBROUTINE push_particles_implicit_split(species)
+  SUBROUTINE push_particles_implicit_split(species, update)
 
     TYPE(particle_species), INTENT(INOUT) :: species
+    LOGICAL, INTENT(IN) :: update
     TYPE(particle), POINTER :: current, next
     INTEGER(i8) :: ipart
     REAL(num), DIMENSION(3) :: Bvec, Evec
@@ -183,8 +184,10 @@ CONTAINS
 
         ! Check convergence
         IF (error < tolerance) THEN
-          current%part_pos = pos_trial
-          current%part_p = vel_trial * part_m
+          IF (update) THEN
+            current%part_pos = pos_trial
+            current%part_p = vel_trial * part_m
+          END IF
           EXIT
         END IF
 

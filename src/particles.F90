@@ -118,6 +118,7 @@ CONTAINS
     REAL(num), DIMENSION(3) :: Bvec, Evec
     REAL(num) :: dt_sub, part_q, part_w, part_m
     REAL(num), DIMENSION(3) :: pos_guess, vel_guess
+    REAL(num), DIMENSION(3) :: pos_trial, vel_trial
     REAL(num), DIMENSION(3) :: pos_half, vel_half
     REAL(num), DIMENSION(3) :: pos0, vel0
     REAL(num), DIMENSION(3) :: v_pred, errorx, errorv
@@ -170,8 +171,11 @@ CONTAINS
         vel_half = (v_pred + alpha * cross(v_pred, Bvec) &
             + alpha**2 * DOT_PRODUCT(v_pred, Bvec) * Bvec) / (1.0_num + alpha**2 * bsq)
 
-        errorx = ABS(pos_guess - pos0 - vel_half * dt_sub)
-        errorv = ABS(vel_guess - 2.0_num * vel_half + vel0)
+        pos_trial = pos0 + vel_half * dt_sub
+        vel_trial = 2.0_num * vel_half - vel0
+
+        errorx = ABS(pos_guess - pos_trial)
+        errorv = ABS(vel_guess - vel_trial)
 
         ! The velocity error is normalised by c.
         ! This might not always be a good choice
@@ -179,14 +183,14 @@ CONTAINS
 
         ! Check convergence
         IF (error < tolerance) THEN
-          current%part_pos = pos_guess
-          current%part_p = vel_guess * part_m
+          current%part_pos = pos_trial
+          current%part_p = vel_trial * part_m
           EXIT
         END IF
 
         ! Otherwise update guess and iterate again
-        pos_guess = pos0 + dt_sub * vel_half
-        vel_guess = 2.0_num * vel_half - vel0
+        pos_guess = pos_trial
+        vel_guess = vel_trial
         iters = iters + 1
         IF (iters > max_iters) THEN
           PRINT*,'Too many iterations: ', iters

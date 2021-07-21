@@ -198,7 +198,8 @@ CONTAINS
         END IF
       END DO
 
-      CALL current_deposition_simple(pos_half, vel_half, part_w * part_q, jx, jy, jz)
+      ! If using the implicit solver, should use pos_half, vel_half instead
+      CALL current_deposition_simple(pos_trial, vel_trial, part_w * part_q, jx, jy, jz)
 
       current => next
     END DO

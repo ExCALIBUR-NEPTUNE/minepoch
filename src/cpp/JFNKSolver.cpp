@@ -80,7 +80,7 @@ void JFNKSolver::CreateJacobian() {
   JacFree->setLambda(1e-6);
 }
 
-void JFNKSolver::Solve(double *x0, double *p) {
+void JFNKSolver::Solve(double *x0, double *p, double eta) {
 
   double norm;
 
@@ -97,8 +97,7 @@ void JFNKSolver::Solve(double *x0, double *p) {
   // Set the initial guess to zero
   x->Scale(0.);
 
-  // TODO add control for this value
-  AztecSolver->Iterate(300,1e-6);
+  AztecSolver->Iterate(300,eta);
 
   // Copy solution vector to p
   double *values;

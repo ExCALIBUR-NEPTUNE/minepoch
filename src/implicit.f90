@@ -22,9 +22,6 @@ CONTAINS
     INTEGER :: ix, iy, iz, row
     REAL(C_DOUBLE), DIMENSION(:), ALLOCATABLE :: x, dir
     REAL(C_DOUBLE) :: max_delta
-    ! Converged if max change < epsilon.
-    ! TODO make this user configurable
-    REAL(num), PARAMETER :: epsilon = 1e-6_num
     INTEGER :: problem_size
 
     problem_size = nx * ny * nz * nvar_solve
@@ -72,13 +69,13 @@ CONTAINS
     DO WHILE (.NOT. converged)
 
       ! Call GMRES to calculate direction
-      CALL solve_gmres(x, dir)
+      CALL solve_gmres(x, dir, linear_tolerance)
 
       ! TODO - Consider normalisations and use in place of MAX(x, c_tiny)
       max_delta = MAXVAL(ABS(dir) / MAX(ABS(x), c_tiny))
 
       ! TODO Implement MPI and checking
-      IF (max_delta < epsilon) converged = .TRUE.
+      IF (max_delta < nonlinear_tolerance) converged = .TRUE.
 
       ! Update x
       x = x - dir

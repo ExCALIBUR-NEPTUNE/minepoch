@@ -40,7 +40,7 @@ public:
   JFNKSolver(int, int *, MPI_Comm &);
   ~JFNKSolver();
   void CreateJacobian();
-  void Solve(double *, double *);
+  void Solve(double *, double *, double);
 };
 
 #endif

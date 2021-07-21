@@ -315,6 +315,10 @@ MODULE shared_data
   ! Switch between explicit PIC and implicit PIC
   LOGICAL :: explicit_pic = .TRUE.
 
+  ! Tolerances for implicit solve
+  REAL(num) :: linear_tolerance = 1e-6_num
+  REAL(num) :: nonlinear_tolerance = 1e-6_num
+
   INTEGER, ALLOCATABLE, DIMENSION(:) :: linear_index
   INTEGER :: local_elements
 

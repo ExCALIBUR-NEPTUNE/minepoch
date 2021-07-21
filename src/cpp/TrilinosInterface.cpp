@@ -17,9 +17,9 @@ extern "C" {
     delete PICSolver;
   }
 
-  void solve_gmres_(double* x, double *dir) {
+  void solve_gmres_(double* x, double *dir, double &eta) {
 
-    PICSolver->Solve(x, dir);
+    PICSolver->Solve(x, dir, eta);
 
   }
 }

@@ -31,6 +31,8 @@ CONTAINS
       CALL one_stream_setup(deck_state)
     CASE('drift_kin_default')
       CALL dk_setup(deck_state)
+    CASE('em_wave')
+      CALL em_wave_setup(deck_state)
     CASE default
       PRINT*, 'Unrecognised set-up: ', TRIM(problem)
       CALL MPI_ABORT(MPI_COMM_WORLD, c_err_setup, errcode)
@@ -149,6 +151,37 @@ CONTAINS
     current_species%temp(:,:,:,1) = temp_x
 
   END SUBROUTINE two_stream_setup
+
+
+
+
+
+  SUBROUTINE em_wave_setup(deck_state)
+
+    INTEGER, INTENT(IN) :: deck_state
+
+    IF (deck_state == c_ds_first) THEN
+      ! Set control variables here
+      nx_global = 256
+      ny_global = 4
+      nz_global = 4
+      x_min = 0.0_num
+      x_max = 2.0_num * pi
+      y_min = x_min
+      ! Could do (x_max * ny_global) / nx_global, but be wary of compilers
+      ! which don't obey precedence implied by parentheses by default
+      ! (e.g. Intel)
+      y_max = x_max * REAL(ny_global, num) / REAL(nx_global, num)
+      z_min = x_min
+      z_max = x_max * REAL(nz_global, num) / REAL(nx_global, num)
+
+      t_end = 20.0_num * pi / c
+      RETURN
+    END IF
+
+    ! No particles - nothing more to do
+
+  END SUBROUTINE em_wave_setup
 
 
 

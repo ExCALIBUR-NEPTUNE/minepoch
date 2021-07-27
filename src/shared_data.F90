@@ -399,6 +399,9 @@ MODULE shared_data
   REAL(num) :: walltime_start, real_walltime_start
   INTEGER :: stdout_frequency
 
+  INTEGER :: n_field_probes = 0
+  INTEGER, DIMENSION(:,:), ALLOCATABLE :: field_probes
+
   LOGICAL, DIMENSION(c_dir_x:c_dir_z,0:c_stagger_max) :: stagger
   INTEGER(i8) :: push_per_field = 5
 

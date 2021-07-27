@@ -29,7 +29,7 @@ CONTAINS
     ELSE
        fw=.false.
     END IF
-    
+
     timer_walltime = -1.0_num
     IF (step /= last_step) THEN
       last_step = step
@@ -47,7 +47,90 @@ CONTAINS
 
     IF (timer_collect) CALL timer_stop(c_timer_io)
 
+    IF (n_field_probes > 0) CALL write_field_probes(step)
+
   END SUBROUTINE output_routines
+
+
+
+  SUBROUTINE write_field_probes(step)
+
+    INTEGER, INTENT(IN) :: step
+    INTEGER :: iprobe
+    CHARACTER(LEN=c_max_string_length) :: filename
+    CHARACTER(LEN=11+data_dir_max_length) :: full_filename
+    LOGICAL :: first_call = .TRUE.
+    INTEGER :: errcode
+    INTEGER :: ixl, iyl, izl
+    INTEGER, PARAMETER :: fu = 68
+    LOGICAL, PARAMETER :: do_flush = .TRUE.
+    INTEGER, PARAMETER :: dump_frequency = 10
+
+    IF (first_call) THEN
+      DO iprobe = 1, n_field_probes
+        ! Check if on proc
+        IF (.NOT. on_proc(field_probes(1, iprobe), &
+            field_probes(2, iprobe), field_probes(3, iprobe))) CYCLE
+
+        ! Write file header
+        WRITE(filename, '(''/Field_Probe_'', i2.2, ''.dat'')') iprobe
+        full_filename = TRIM(data_dir) // filename
+        OPEN(unit=fu, status='REPLACE', file=TRIM(full_filename), &
+            iostat=errcode)
+        IF (errcode /= 0) THEN
+          PRINT*, 'Failed to open file: ', TRIM(full_filename)
+          CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
+        END IF
+
+        ! Local coordinates of probe
+        ixl = field_probes(1, iprobe) - n_global_min(1)
+        iyl = field_probes(2, iprobe) - n_global_min(2)
+        izl = field_probes(3, iprobe) - n_global_min(3)
+        WRITE(fu,'(3a5, 6a23)') 'i', 'j', 'k', &
+            'x(ix)', 'y(iy)', 'z(iz)', &
+            'dx', 'dy', 'dz'
+        WRITE(fu, '(3i5,6e23.14)') field_probes(1:3, iprobe), &
+            x(ixl), y(iyl), z(izl), dx, dy, dz
+        WRITE(fu,'(a5, 99a23)') 'time', 'ex', 'ey', 'ez', 'bx', 'by', 'bz'
+        IF (do_flush) CLOSE(unit=fu)
+      END DO
+      first_call = .FALSE.
+    END IF
+
+    IF (MOD(step, dump_frequency) /= 0) RETURN
+
+    DO iprobe = 1, n_field_probes
+      ! Check if on proc
+      IF (.NOT. on_proc(field_probes(1, iprobe), &
+          field_probes(2, iprobe), field_probes(3, iprobe))) CYCLE
+      WRITE(filename, '(''/Field_Probe_'', i2.2, ''.dat'')') iprobe
+      full_filename = TRIM(data_dir) // filename
+      OPEN(unit=fu, status='OLD', position='APPEND', file=TRIM(full_filename), &
+          iostat=errcode)
+      IF (errcode /= 0) THEN
+        PRINT*, 'Failed to open file: ', TRIM(full_filename)
+        CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
+      END IF
+      ixl = field_probes(1, iprobe) - n_global_min(1)
+      iyl = field_probes(2, iprobe) - n_global_min(2)
+      izl = field_probes(3, iprobe) - n_global_min(3)
+      WRITE(fu,'(99e23.14)') time, ex(ixl,iyl,izl), ey(ixl,iyl,izl), ez(ixl,iyl,izl), &
+          bx(ixl,iyl,izl), by(ixl,iyl,izl), bz(ixl,iyl,izl)
+      IF (do_flush) CLOSE(unit=fu)
+    END DO
+
+  END SUBROUTINE write_field_probes
+
+
+  PURE LOGICAL FUNCTION on_proc(ix, iy, iz)
+
+    INTEGER, INTENT(IN) :: ix, iy, iz
+
+    on_proc = ix >= n_global_min(1) .AND. ix <= n_global_max(1) &
+        .AND. iy >= n_global_min(2) .AND. iy <= n_global_max(2) &
+        .AND. iz >= n_global_min(3) .AND. iz <= n_global_max(3)
+
+  END FUNCTION on_proc
 
 
 

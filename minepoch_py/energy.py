@@ -1,5 +1,31 @@
+#!/usr/bin/env python3
+import sys
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="""Energy conservation analysis for minEPOCH
+        """,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    group = parser.add_argument_group("Tolerances")
+
+    group.add_argument(
+        "--energy_conservation",
+        default=1e-4,
+        type=float,
+        help="Allowed fractional error in energy conservation",
+        nargs="?",
+    )
+
+    parser.add_argument("--disable_plots", help="Disable plot generation",
+                        action="store_true")
+
+    return parser.parse_args()
 
 
 def get_energies(fname):
@@ -21,7 +47,8 @@ def get_energies(fname):
     return times, particle_energies, field_energies
 
 
-def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False, **kwargs):
+def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False,
+                      **kwargs):
     # Read energies from file. Ignore particle energy
     times, _, energies = get_energies(fname)
 
@@ -71,3 +98,12 @@ def energy_check(fname='Data/output.dat', tolerance=None, label=None,
         return 0
 
     return None
+
+
+if __name__ == "__main__":
+    # Parse arguments
+    options = parse_arguments()
+    # Run error analysis
+    sys.exit(energy_check(tolerance=options.energy_conservation,
+                          plot=not options.disable_plots,
+                          savefig=True))

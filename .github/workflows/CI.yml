@@ -59,3 +59,11 @@ jobs:
           cd src/unit_tests/field_evaluation
           make COMPILER=gfortran
           ./bin/field_test
+          cd ../particle_position
+          make COMPILER=gfortran
+          ./bin/particle_position_test
+          python3 check_test.py
+          cd ../particle_momentum
+          make COMPILER=gfortran
+          ./bin/particle_momentum_test
+          python3 check_test.py

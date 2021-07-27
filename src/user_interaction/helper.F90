@@ -4,6 +4,7 @@ MODULE helper
   USE strings
   USE partlist
   USE deltaf_loader2, ONLY: delstaf_load
+  USE particle_init
   USE utilities
 
   IMPLICIT NONE
@@ -265,10 +266,9 @@ CONTAINS
           ! can easily over_ride)
           current%charge = species%charge
           current%mass = species%mass
-          current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
-          current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
-          current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
           current%pvol = npart_per_cell
+
+          CALL init_particle_position(current, x(ix), y(iy), z(iz), dx, dy, dz)
 
           ipart = ipart + 1
           current => current%next
@@ -298,7 +298,7 @@ CONTAINS
 
   END SUBROUTINE non_uniform_load_particles
 
-  
+
 
   ! This subroutine automatically loads a uniform density of pseudoparticles
   SUBROUTINE load_particles(species, load_list)
@@ -325,15 +325,7 @@ CONTAINS
     npart_this_species = species%count
     IF (npart_this_species <= 0) RETURN
 
-    num_valid_cells_local = 0
-    DO iz = 1, nz
-    DO iy = 1, ny
-    DO ix = 1, nx
-      IF (load_list(ix, iy, iz)) &
-          num_valid_cells_local = num_valid_cells_local + 1
-    ENDDO ! ix
-    ENDDO ! iy
-    ENDDO ! iz
+    num_valid_cells_local = COUNT(load_list(1:nx, 1:ny, 1:nz))
 
     IF (species%npart_per_cell >= 0) THEN
       npart_per_cell = FLOOR(species%npart_per_cell, KIND=i8)
@@ -448,10 +440,9 @@ CONTAINS
           ! can easily over_ride)
           current%charge = species%charge
           current%mass = species%mass
-          current%part_pos(1) = x(ix) + (random() - 0.5_num) * dx
-          current%part_pos(2) = y(iy) + (random() - 0.5_num) * dy
-          current%part_pos(3) = z(iz) + (random() - 0.5_num) * dz
           current%pvol = npart_per_cell
+
+          CALL init_particle_position(current, x(ix), y(iy), z(iz), dx, dy, dz)
 
           ipart = ipart + 1
           current => current%next
@@ -498,9 +489,7 @@ CONTAINS
 
         cell_x = ipos + 1
 
-        current%part_pos(1) = x(cell_x) + (random() - 0.5_num) * dx
-        current%part_pos(2) = y(cell_y) + (random() - 0.5_num) * dy
-        current%part_pos(3) = z(cell_z) + (random() - 0.5_num) * dz
+        CALL init_particle_position(current, x(cell_x), y(cell_y), z(cell_z), dx, dy, dz)
 
         current => current%next
       ENDDO

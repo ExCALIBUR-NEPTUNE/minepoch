@@ -1,7 +1,7 @@
 MODULE particle_temperature
 
+  USE particle_init
   USE shared_data
-  USE random_generator
 
   IMPLICIT NONE
 
@@ -106,49 +106,5 @@ CONTAINS
     ENDDO
 
   END SUBROUTINE setup_particle_temperature
-
-
-
-  FUNCTION momentum_from_temperature(mass, temperature, drift)
-
-    REAL(num), INTENT(IN) :: mass, temperature, drift
-    REAL(num) :: momentum_from_temperature
-
-    REAL(num) :: stdev
-    REAL(num) :: rand1, rand2, w
-    REAL(num), SAVE :: val
-    LOGICAL, SAVE :: cached = .FALSE.
-
-    ! This is a basic polar Box-Muller transform
-    ! It generates gaussian distributed random numbers
-    ! The standard deviation (stdev) is related to temperature
-
-    stdev = SQRT(temperature * kb * mass)
-
-    IF (cached) THEN
-      cached = .FALSE.
-      momentum_from_temperature = val * stdev + drift
-    ELSE
-      cached = .TRUE.
-
-      DO
-        rand1 = random()
-        rand2 = random()
-
-        rand1 = 2.0_num * rand1 - 1.0_num
-        rand2 = 2.0_num * rand2 - 1.0_num
-
-        w = rand1**2 + rand2**2
-
-        IF (w > c_tiny .AND. w < 1.0_num) EXIT
-      ENDDO
-
-      w = SQRT((-2.0_num * LOG(w)) / w)
-
-      momentum_from_temperature = rand1 * w * stdev + drift
-      val = rand2 * w
-    ENDIF
-
-  END FUNCTION momentum_from_temperature
 
 END MODULE particle_temperature

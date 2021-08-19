@@ -148,7 +148,7 @@ PROGRAM pic
       IF (push) THEN
         ! .FALSE. this time to use load balancing threshold
         IF (use_balance) CALL balance_workload(.FALSE.)
-        CALL push_particles
+        CALL push_particles(.TRUE.)
       ENDIF
 
 #ifdef PAT_DEBUG

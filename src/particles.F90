@@ -70,8 +70,9 @@ CONTAINS
   END SUBROUTINE push_particles_2ndstep
 
 
-  SUBROUTINE push_particles
+  SUBROUTINE push_particles(update)
 
+    LOGICAL, INTENT(IN) :: update
     INTEGER :: ispecies, isubstep
     TYPE(particle_species), POINTER :: species, next_species
 
@@ -94,7 +95,7 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk0(species)
        ELSE IF (species%is_implicit) THEN
-          CALL push_particles_implicit_split(species, .TRUE.)
+          CALL push_particles_implicit_split(species, update)
        ELSE
           DO isubstep=1,species%nsubstep
              CALL push_particles_boris_split(species)
@@ -201,9 +202,11 @@ CONTAINS
         END IF
       END DO
 
-      ! If using the implicit solver, should use pos_half, vel_half instead
-      CALL current_deposition_simple(pos_trial, vel_trial, part_w * part_q, jx, jy, jz)
-
+      IF (explicit_pic) THEN
+        CALL current_deposition_simple(pos_trial, vel_trial, part_w * part_q, jx, jy, jz)
+      ELSE
+        CALL current_deposition_simple(pos_half, vel_half, part_w * part_q, jx, jy, jz)
+      END IF
       current => next
     END DO
 

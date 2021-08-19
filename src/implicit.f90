@@ -2,12 +2,13 @@ MODULE implicit
 
   USE iso_c_binding
   USE boundary
+  USE particles
   USE shared_data
 
   IMPLICIT NONE
 
   REAL(num), DIMENSION(:,:,:), ALLOCATABLE :: ex0, ey0, ez0, bx0, by0, bz0
-  REAL(num), DIMENSION(:), ALLOCATABLE :: x0, rhs0
+  REAL(num), DIMENSION(:), ALLOCATABLE :: x0
   ! Number of independent variables.
   INTEGER, PARAMETER :: nvar_solve = 6
 
@@ -19,15 +20,17 @@ CONTAINS
   SUBROUTINE solve_implicit_pic
 
     LOGICAL :: converged
-    INTEGER :: ix, iy, iz, row
-    REAL(C_DOUBLE), DIMENSION(:), ALLOCATABLE :: x, dir
-    REAL(C_DOUBLE) :: max_delta
+    INTEGER :: ix, iy, iz, row, iters
+    INTEGER, PARAMETER :: max_iters = 40
+    REAL(C_DOUBLE), DIMENSION(:), ALLOCATABLE :: x, dir, f
+    REAL(C_DOUBLE) :: max_delta, ep_conv
     INTEGER :: problem_size
 
     problem_size = nx * ny * nz * nvar_solve
 
     ALLOCATE(x(problem_size), dir(problem_size))
-    ALLOCATE(x0(problem_size), rhs0(problem_size))
+    ALLOCATE(x0(problem_size))
+    ALLOCATE(f(problem_size))
 
     ! Allocate and store initial fields
     ALLOCATE(ex0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
@@ -45,6 +48,7 @@ CONTAINS
     bz0 = bz
 
     converged = .FALSE.
+    iters = 0
 
     ! Initialise the iterate, x
     DO iz = 1, nz
@@ -61,31 +65,53 @@ CONTAINS
       END DO
     END DO
 
-    ! Store x0, calculate rhs0
+    ! Store x0
     x0 = x
 
-    CALL calculate_rhs(ex, ey, ez, bx, by, bz, rhs0)
+    CALL computef(x, f)
+
+    ep_conv = nonlinear_tolerance + nonlinear_tolerance * DOT_PRODUCT(f, f)
 
     DO WHILE (.NOT. converged)
 
       ! Call GMRES to calculate direction
       CALL solve_gmres(x, dir, linear_tolerance)
 
-      ! TODO - Consider normalisations and use in place of MAX(x, c_tiny)
-      max_delta = MAXVAL(ABS(dir) / MAX(ABS(x), c_tiny))
-
-      ! TODO Implement MPI and checking
-      IF (max_delta < nonlinear_tolerance) converged = .TRUE.
-
       ! Update x
       x = x - dir
+
+      CALL computef(x, f)
+      max_delta = DOT_PRODUCT(f, f)
+
+      ! TODO Implement MPI and checking
+      IF (max_delta < ep_conv) converged = .TRUE.
+      iters = iters + 1
+      IF (iters > max_iters) THEN
+        PRINT*,'Too many iterations'
+        PRINT*,max_delta, ep_conv
+        STOP
+      END IF
     END DO
 
     CALL unpack_vector(x, ex, ey, ez, bx, by, bz)
 
+    ! Set time centred field for final particle update
+    ex = 0.5_num * (ex + ex0)
+    ey = 0.5_num * (ey + ey0)
+    ez = 0.5_num * (ez + ez0)
+    bx = 0.5_num * (bx + bx0)
+    by = 0.5_num * (by + by0)
+    bz = 0.5_num * (bz + bz0)
+
+    CALL push_particles(.TRUE.)
+
+    ! Reset field to final value
+    CALL unpack_vector(x, ex, ey, ez, bx, by, bz)
+
     DEALLOCATE(x, dir)
     DEALLOCATE(ex0, ey0, ez0, bx0, by0, bz0)
-    DEALLOCATE(x0, rhs0)
+    DEALLOCATE(x0)
+    DEALLOCATE(f)
 
   END SUBROUTINE solve_implicit_pic
 
@@ -134,12 +160,12 @@ CONTAINS
       DO iy = 1, ny
         DO ix = 1, nx
           row = index1d(ix,iy,iz)
-          ex(ix,iy,iz) = x(row+1)
-          ey(ix,iy,iz) = x(row+2)
-          ez(ix,iy,iz) = x(row+3)
-          bx(ix,iy,iz) = x(row+4)
-          by(ix,iy,iz) = x(row+5)
-          bz(ix,iy,iz) = x(row+6)
+          ex(ix,iy,iz) = 0.5_num * (x(row+1) + x0(row+1))
+          ey(ix,iy,iz) = 0.5_num * (x(row+2) + x0(row+2))
+          ez(ix,iy,iz) = 0.5_num * (x(row+3) + x0(row+3))
+          bx(ix,iy,iz) = 0.5_num * (x(row+4) + x0(row+4))
+          by(ix,iy,iz) = 0.5_num * (x(row+5) + x0(row+5))
+          bz(ix,iy,iz) = 0.5_num * (x(row+6) + x0(row+6))
         END DO
       END DO
     END DO
@@ -151,7 +177,7 @@ CONTAINS
     ! Now calculate rhs
     CALL calculate_rhs(ex, ey, ez, bx, by, bz, rhs)
 
-    f = (x - x0) / dt - 0.5_num*(rhs + rhs0)
+    f = (x - x0) / dt - rhs
 
     DEALLOCATE(rhs)
 
@@ -175,18 +201,21 @@ CONTAINS
     c2idz = c**2 * idz
 
     ! Need to add j here
-    ! CALL particle push
+    CALL push_particles(.FALSE.)
 
     DO iz = 1, nz
       DO iy = 1, ny
         DO ix = 1, nx
           row = index1d(ix,iy,iz)
           rhs(row+1) = c2idy * (bz(ix  , iy  , iz  ) - bz(ix  , iy-1, iz  )) &
-                     - c2idz * (by(ix  , iy  , iz  ) - by(ix  , iy  , iz-1))
+                     - c2idz * (by(ix  , iy  , iz  ) - by(ix  , iy  , iz-1)) &
+                     - jx(ix, iy, iz) / epsilon0
           rhs(row+2) = c2idz * (bx(ix  , iy  , iz  ) - bx(ix  , iy  , iz-1)) &
-                     - c2idx * (bz(ix  , iy  , iz  ) - bz(ix-1, iy  , iz  ))
+                     - c2idx * (bz(ix  , iy  , iz  ) - bz(ix-1, iy  , iz  )) &
+                     - jy(ix, iy, iz) / epsilon0
           rhs(row+3) = c2idx * (by(ix  , iy  , iz  ) - by(ix-1, iy  , iz  )) &
-                     - c2idy * (bx(ix  , iy  , iz  ) - bx(ix  , iy-1, iz  ))
+                     - c2idy * (bx(ix  , iy  , iz  ) - bx(ix  , iy-1, iz  )) &
+                     - jz(ix, iy, iz) / epsilon0
           rhs(row+4) = idz * (ey(ix  , iy  , iz+1) - ey(ix  , iy  , iz  )) &
                      - idy * (ez(ix  , iy+1, iz  ) - ez(ix  , iy  , iz  ))
           rhs(row+5) = idx * (ez(ix+1, iy  , iz  ) - ez(ix  , iy  , iz  )) &

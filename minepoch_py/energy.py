@@ -70,13 +70,16 @@ def plot_field_energy(fname, xscale=1.0, dbg=False, ylog=False, xlog=False,
 
 
 def energy_check(fname='Data/output.dat', tolerance=None, label=None,
-                 plot=True, savefig=False):
+                 plot=True, savefig=False, signedplot=True):
     times, pe, fe = get_energies(fname)
     total_energy = pe + fe
 
     if plot:
-        plt.plot(times, (total_energy - total_energy[0]) / total_energy[0],
-                 label=label)
+        if signedplot:
+            data = total_energy - total_energy[0]
+        else:
+            data = np.abs(total_energy - total_energy[0])
+        plt.plot(times, data / total_energy[0], label=label)
         plt.xlabel(r'$\mathrm{t (s)}$', fontsize=16)
         plt.ylabel(r'$\frac{\Delta \epsilon}{\epsilon(t=0)}$', fontsize=16)
         plt.xlim(left=times[0])

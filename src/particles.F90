@@ -795,6 +795,7 @@ CONTAINS
 
   SUBROUTINE setup_fluid
 
+    IF (n_species <= 0) RETURN
     nx_fluid = nx
     dx_fluid = dx
     ALLOCATE(p_fluid(1:nx_fluid))

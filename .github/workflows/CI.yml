@@ -2,7 +2,7 @@
 
 name: CI
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   # Triggers the workflow on push (all branches) or pull request (only main)
   push:
@@ -21,19 +21,16 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
+    container: docker://tomgoffrey/minepoch_deps:latest
+
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-  
+
       # Build minepoch
       - name: Build
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y mpich
-          pip3 install numpy
-          pip3 install scipy
-          pip3 install matplotlib
           make COMPILER=gfortran
 
       - name: Test
@@ -57,8 +54,23 @@ jobs:
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py --disable_plots
 
+      - name: Test-EM-Wave
+        run: |
+          cp Data/em_wave.deck Data/input.deck
+          mpirun -np 2 ./bin/epoch3d
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          python3 minepoch_py/energy.py --disable_plots --energy_conservation=2e-11
+
       - name: Unit-Tests
         run: |
           cd src/unit_tests/field_evaluation
           make COMPILER=gfortran
           ./bin/field_test
+          cd ../particle_position
+          make COMPILER=gfortran
+          ./bin/particle_position_test
+          python3 check_test.py
+          cd ../particle_momentum
+          make COMPILER=gfortran
+          ./bin/particle_momentum_test
+          python3 check_test.py

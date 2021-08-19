@@ -33,6 +33,8 @@ A number of example input decks are included with the code:
     substepping enabled.
  - `Data/one_stream.deck`: A 1D force-free problem illustrating the use of low-noise control-variates.
  - `Data/drift_kinetic.deck`: An demonstration of the use of drift-kinetics in a quasi-1D setting.
+ - `Data/em_wave.deck`: A simple electromagnetic wave set-up in a vacuum. Also demonstrates use
+    of the field probe diagnostic.
  
 To run one of these problems the input deck must be copied to the correct location before running
 minepoch, for example:

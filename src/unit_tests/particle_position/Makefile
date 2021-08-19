@@ -133,7 +133,7 @@ FFLAGS += $(MODULEFLAG)
 LDFLAGS = $(FFLAGS)
 
 # Set some of the build parameters
-TARGET = epoch3d
+TARGET = particle_position_test
 
 # Set pre-processor defines
 DEFINES := $(DEF)
@@ -171,25 +171,20 @@ DEFINES += $(D)PARTICLE_SHAPE_BSPLINE3
 all: main
 
 SRCDIR = src
+MAINSRCDIR = ../..
 OBJDIR = obj
 BINDIR = bin
-INCDIR = $(SRCDIR)/include
+INCDIR = $(MAINSRCDIR)/include
 FC = $(MPIF90)
 DATE := $(shell date +%s)
 MACHINE := $(shell uname -n)
-PREPROFLAGS = $(DEFINES) $(D)_COMMIT='"$(COMMIT)"' $(D)_DATE=$(DATE) \
-  $(D)_MACHINE='"$(MACHINE)"' -I$(INCDIR)
+PREPROFLAGS = $(DEFINES) -I$(INCDIR)
 
 FC_INFO := $(shell ${FC} --version 2>/dev/null \
     || ${FC} -V 2>&1 | grep '[a-zA-Z]' | head -n 1)
 
-SRCFILES = balance.F90 boundary.f90 calc_df.F90 current_deposition.F90 \
-  custom_laser.f90 deck.f90 diagnostics.F90 epoch3d.F90 fields.f90 finish.f90 \
-  helper.F90 ic_module.f90 laser.f90 mpi_routines.F90 mpi_subtype_control.f90 \
-  particle_init.F90 particle_temperature.F90 particles.F90 partlist.F90 \
-  problem_setup.f90 random_generator.f90 redblack_module.f90 setup.F90 \
-  shared_data.F90 strings.f90 timer.f90 utilities.F90 version_data.F90 \
-  welcome.F90 deltaf_loader.F90
+SRCFILES = particle_position_test.F90 shared_data.F90 random_generator.f90 \
+  particle_init.F90
 
 OBJFILES := $(SRCFILES:.f90=.o)
 OBJFILES := $(OBJFILES:.F90=.o)
@@ -202,12 +197,7 @@ OBJFILES := $(OBJFILES)
 
 FULLTARGET = $(BINDIR)/$(TARGET)
 
-VPATH = $(SRCDIR):$(SRCDIR)/deck:$(SRCDIR)/housekeeping:$(SRCDIR)/io:\
-  $(SRCDIR)/parser:$(SRCDIR)/user_interaction:$(OBJDIR)
-
-$(SRCDIR)/COMMIT: FORCE
-	@sh $(SRCDIR)/gen_commit_string.sh || $(MAKE) $(MAKECMDGOALS)
--include $(SRCDIR)/COMMIT
+VPATH = $(SRCDIR):$(MAINSRCDIR):$(MAINSRCDIR)/housekeeping:$(MAINSRCDIR)/user_interaction:$(OBJDIR)
 
 # Rule to build the fortran files
 
@@ -251,40 +241,8 @@ $(OBJDIR):
 
 # All the dependencies
 
-balance.o: balance.F90 boundary.o redblack_module.o timer.o
-boundary.o: boundary.f90 laser.o mpi_subtype_control.o particle_temperature.o \
-  partlist.o
-calc_df.o: calc_df.F90 shared_data.o
-current_deposition.o: current_deposition.F90 shared_data.o utilities.o
-custom_laser.o: custom_laser.f90 shared_data.o
-deck.o: deck.f90 shared_data.o timer.o fields.o
-diagnostics.o: diagnostics.F90 calc_df.o shared_data.o strings.o timer.o
-epoch3d.o: epoch3d.F90 balance.o deck.o diagnostics.o fields.o finish.o \
-  helper.o ic_module.o mpi_routines.o particles.o problem_setup.o \
-  shared_data.o setup.o welcome.o pat_mpi_lib_interface.o
-fields.o: fields.f90 boundary.o
-finish.o: finish.f90 laser.o partlist.o
-helper.o: helper.F90 boundary.o deltaf_loader.o particle_init.o partlist.o \
-  strings.o utilities.o
-ic_module.o: ic_module.f90 helper.o setup.o shared_data.o fields.o
-laser.o: laser.f90 custom_laser.o
-mpi_routines.o: mpi_routines.F90 helper.o
-mpi_subtype_control.o: mpi_subtype_control.f90 shared_data.o
-particle_init.o: particle_init.F90 shared_data.o random_generator.o
-particle_temperature.o: particle_temperature.F90 particle_init.o \
-  shared_data.o
-particles.o: particles.F90 boundary.o current_deposition.o \
-  deltaf_loader.o partlist.o utilities.o
-deltaf_loader.o: deltaf_loader.F90 shared_data.o
-partlist.o: partlist.F90 shared_data.o
-problem_setup.o: problem_setup.f90 fields.o ic_module.o shared_data.o \
-  strings.o timer.o
+particle_position_test.o: particle_position_test.F90 random_generator.o shared_data.o \
+  particle_init.o
+particle_lading.o: particle_init.F90 random_generator.o shared_data.o
 random_generator.o: random_generator.f90
-redblack_module.o: redblack_module.f90 partlist.o
-setup.o: setup.F90 fields.o laser.o strings.o timer.o version_data.o
 shared_data.o: shared_data.F90
-strings.o: strings.f90 shared_data.o
-timer.o: timer.f90 shared_data.o
-utilities.o: utilities.F90 shared_data.o
-version_data.o: version_data.F90 $(SRCDIR)/COMMIT
-welcome.o: welcome.F90 shared_data.o version_data.o

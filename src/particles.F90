@@ -93,9 +93,11 @@ CONTAINS
 
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk0(species)
+       ELSE IF (species%is_implicit) THEN
+          CALL push_particles_implicit_split(species, .TRUE.)
        ELSE
           DO isubstep=1,species%nsubstep
-             CALL push_particles_lorentz_split(species)
+             CALL push_particles_boris_split(species)
           END DO
        END IF
 
@@ -108,7 +110,108 @@ CONTAINS
 
 
 
-  SUBROUTINE push_particles_lorentz_split(species)
+  SUBROUTINE push_particles_implicit_split(species, update)
+
+    TYPE(particle_species), INTENT(INOUT) :: species
+    LOGICAL, INTENT(IN) :: update
+    TYPE(particle), POINTER :: current, next
+    INTEGER(i8) :: ipart
+    REAL(num), DIMENSION(3) :: Bvec, Evec
+    REAL(num) :: dt_sub, part_q, part_w, part_m
+    REAL(num), DIMENSION(3) :: pos_guess, vel_guess
+    REAL(num), DIMENSION(3) :: pos_trial, vel_trial
+    REAL(num), DIMENSION(3) :: pos_half, vel_half
+    REAL(num), DIMENSION(3) :: pos0, vel0
+    REAL(num), DIMENSION(3) :: v_pred, errorx, errorv
+    REAL(num), PARAMETER :: tolerance = 1e-10_num
+    INTEGER, PARAMETER :: max_iters = 10
+    REAL(num) :: error, alpha, bsq
+    INTEGER :: iters
+
+    dt_sub = dt / species%nsubstep
+
+    current => species%attached_list%head
+
+    IF (.NOT. particles_uniformly_distributed) THEN
+      part_w = species%weight
+    END IF
+
+    DO ipart = 1, species%attached_list%count
+      next => current%next
+      IF (particles_uniformly_distributed) THEN
+        part_w = current%weight
+      END IF
+      part_q = current%charge
+      part_m = current%mass
+
+      alpha = 0.5_num * dt_sub * part_q / part_m
+
+      ! Reset iteration count
+      iters = 1
+
+      pos0 = current%part_pos
+      vel0 = current%part_p / part_m
+
+      ! Start guess at t=n
+      pos_guess = pos0
+      vel_guess = vel0
+
+      ! Loop until converged
+      DO
+        ! Calculate half time-step values
+        pos_half = 0.5_num * (pos0 + pos_guess)
+
+        ! Fields at midpoint
+        CALL get_fields_at_point(pos_half,Bvec,Evec)
+
+        ! bfield squared
+        bsq = DOT_PRODUCT(Bvec, Bvec)
+
+        ! Predictor step
+        v_pred = vel0 + alpha * Evec
+        vel_half = (v_pred + alpha * cross(v_pred, Bvec) &
+            + alpha**2 * DOT_PRODUCT(v_pred, Bvec) * Bvec) / (1.0_num + alpha**2 * bsq)
+
+        pos_trial = pos0 + vel_half * dt_sub
+        vel_trial = 2.0_num * vel_half - vel0
+
+        errorx = ABS(pos_guess - pos_trial)
+        errorv = ABS(vel_guess - vel_trial)
+
+        ! The velocity error is normalised by c.
+        ! This might not always be a good choice
+        error = MAX(MAXVAL(errorx), MAXVAL(errorv) / c)
+
+        ! Check convergence
+        IF (error < tolerance) THEN
+          IF (update) THEN
+            current%part_pos = pos_trial
+            current%part_p = vel_trial * part_m
+          END IF
+          EXIT
+        END IF
+
+        ! Otherwise update guess and iterate again
+        pos_guess = pos_trial
+        vel_guess = vel_trial
+        iters = iters + 1
+        IF (iters > max_iters) THEN
+          PRINT*,'Too many iterations: ', iters
+          STOP
+        END IF
+      END DO
+
+      ! If using the implicit solver, should use pos_half, vel_half instead
+      CALL current_deposition_simple(pos_trial, vel_trial, part_w * part_q, jx, jy, jz)
+
+      current => next
+    END DO
+
+ END SUBROUTINE push_particles_implicit_split
+
+
+
+ SUBROUTINE push_particles_boris_split(species)
     TYPE(particle_species), INTENT(INOUT) :: species
     ! 2nd order accurate particle pusher using parabolic weighting
     ! on and off the grid. The calculation of J looks rather odd
@@ -287,7 +390,7 @@ CONTAINS
       CALL update_fluideq
    END IF
 
- END SUBROUTINE push_particles_lorentz_split
+ END SUBROUTINE push_particles_boris_split
 
 
 

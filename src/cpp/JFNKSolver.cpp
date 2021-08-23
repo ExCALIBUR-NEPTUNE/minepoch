@@ -80,7 +80,7 @@ void JFNKSolver::CreateJacobian() {
   JacFree->setLambda(1e-6);
 }
 
-void JFNKSolver::Solve(double *x0, double *p, double eta) {
+void JFNKSolver::Solve(double x0[], double p[], double eta) {
 
   double norm;
 
@@ -100,9 +100,7 @@ void JFNKSolver::Solve(double *x0, double *p, double eta) {
   AztecSolver->Iterate(300,eta);
 
   // Copy solution vector to p
-  double *values;
-  x->ExtractView(&values);
   for(int i=0; i<NumMyElements; i++){
-    p[i]=values[i];
+    p[i] = x[0][i];
   }
 }

@@ -7,7 +7,6 @@ MODULE implicit
 
   IMPLICIT NONE
 
-  REAL(num), DIMENSION(:,:,:), ALLOCATABLE :: ex0, ey0, ez0, bx0, by0, bz0
   REAL(num), DIMENSION(:), ALLOCATABLE :: x0
   ! Number of independent variables.
   INTEGER, PARAMETER :: nvar_solve = 6
@@ -31,21 +30,6 @@ CONTAINS
     ALLOCATE(x(problem_size), dir(problem_size))
     ALLOCATE(x0(problem_size))
     ALLOCATE(f(problem_size))
-
-    ! Allocate and store initial fields
-    ALLOCATE(ex0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
-    ALLOCATE(ey0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
-    ALLOCATE(ez0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
-    ALLOCATE(bx0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
-    ALLOCATE(by0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
-    ALLOCATE(bz0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
-
-    ex0 = ex
-    ey0 = ey
-    ez0 = ez
-    bx0 = bx
-    by0 = by
-    bz0 = bz
 
     converged = .FALSE.
     iters = 0
@@ -93,23 +77,32 @@ CONTAINS
       END IF
     END DO
 
-    CALL unpack_vector(x, ex, ey, ez, bx, by, bz)
-
     ! Set time centred field for final particle update
-    ex = 0.5_num * (ex + ex0)
-    ey = 0.5_num * (ey + ey0)
-    ez = 0.5_num * (ez + ez0)
-    bx = 0.5_num * (bx + bx0)
-    by = 0.5_num * (by + by0)
-    bz = 0.5_num * (bz + bz0)
+    DO iz = 1, nz
+      DO iy = 1, ny
+        DO ix = 1, nx
+          row = index1d(ix,iy,iz)
+          ex(ix,iy,iz) = 0.5_num * (x(row+1) + x0(row+1))
+          ey(ix,iy,iz) = 0.5_num * (x(row+2) + x0(row+2))
+          ez(ix,iy,iz) = 0.5_num * (x(row+3) + x0(row+3))
+          bx(ix,iy,iz) = 0.5_num * (x(row+4) + x0(row+4))
+          by(ix,iy,iz) = 0.5_num * (x(row+5) + x0(row+5))
+          bz(ix,iy,iz) = 0.5_num * (x(row+6) + x0(row+6))
+        END DO
+      END DO
+    END DO
 
+    ! Call boundary conditions on trial solution
+    CALL efield_bcs(ex, ey, ez, ng)
+    CALL bfield_final_bcs(bx, by, bz, ng)
+
+    ! Update particle positions
     CALL push_particles(.TRUE.)
 
     ! Reset field to final value
     CALL unpack_vector(x, ex, ey, ez, bx, by, bz)
 
     DEALLOCATE(x, dir)
-    DEALLOCATE(ex0, ey0, ez0, bx0, by0, bz0)
     DEALLOCATE(x0)
     DEALLOCATE(f)
 

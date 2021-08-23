@@ -101,7 +101,7 @@ void JFNKSolver::Solve(double x0[], double p[], double eta) {
   // Set the initial guess to zero
   x->Scale(0.);
 
-  AztecSolver->Iterate(300,eta);
+  AztecSolver->Iterate(40,eta);
 
   // Copy solution vector to p
   for(int i=0; i<NumMyElements; i++){

@@ -77,6 +77,10 @@ CONTAINS
       END IF
     END DO
 
+    IF (verbose_solver) THEN
+      PRINT*, '*** Non-linear solver took ', iters, ' iterations.***'
+    END IF
+
     ! Set time centred field for final particle update
     DO iz = 1, nz
       DO iy = 1, ny

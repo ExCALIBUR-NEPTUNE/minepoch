@@ -23,7 +23,8 @@ CONTAINS
          npart_global, nsteps, t_end, dt_multiplier, dlb_threshold, &
          stdout_frequency, particle_push_start_time, n_species, &
          fixed_fields, global_substeps, use_esirkepov, n_field_probes, &
-         explicit_pic, linear_tolerance, nonlinear_tolerance
+         explicit_pic, linear_tolerance, nonlinear_tolerance, &
+         verbose_solver
     NAMELIST/field_probe_positions/ x_probes, y_probes, z_probes
 
     IF (first) THEN

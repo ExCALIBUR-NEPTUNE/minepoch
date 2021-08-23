@@ -319,6 +319,8 @@ MODULE shared_data
   ! Tolerances for implicit solve
   REAL(num) :: linear_tolerance = 1e-6_num
   REAL(num) :: nonlinear_tolerance = 1e-6_num
+  ! Control implicit solver verbosity
+  LOGICAL(C_BOOL) :: verbose_solver = .FALSE.
 
   INTEGER, ALLOCATABLE, DIMENSION(:) :: linear_index
   INTEGER :: local_elements

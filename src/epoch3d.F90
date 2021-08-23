@@ -111,7 +111,7 @@ PROGRAM pic
   ELSE
 #ifdef TRILINOS
     CALL init_1d_index
-    CALL init_trilinos(local_elements, linear_index, comm)
+    CALL init_trilinos(local_elements, linear_index, comm, verbose_solver)
 #else
     IF (rank == 0) THEN
       PRINT*, 'Implicit PIC must be enabled at compile time: -DEF=TRILINOS'

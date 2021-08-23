@@ -1,6 +1,6 @@
 #include "JFNKSolver.h"
 
-JFNKSolver::JFNKSolver(int NumMyElements_, int * MyGlobalElements, MPI_Comm &OldComm) :
+JFNKSolver::JFNKSolver(int NumMyElements_, int * MyGlobalElements, MPI_Comm &OldComm, bool verbose) :
   NumMyElements(NumMyElements_)
 {
 
@@ -41,8 +41,12 @@ JFNKSolver::JFNKSolver(int NumMyElements_, int * MyGlobalElements, MPI_Comm &Old
 
   // Set output level.
   // Possible options: AZ_none, AZ_summary, AZ_warning, AZ_last, AZ_all
-  // AztecSolver->SetAztecOption(AZ_output,AZ_summary);
-  AztecSolver->SetAztecOption(AZ_output, AZ_none);
+  if (verbose) {
+    AztecSolver->SetAztecOption(AZ_output,AZ_summary);
+  }
+  else {
+    AztecSolver->SetAztecOption(AZ_output, AZ_none);
+  }
 
   // Turn off built-in preconditioning method
   // Any preconditioning options should be set here.

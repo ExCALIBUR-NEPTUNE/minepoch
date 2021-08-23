@@ -37,7 +37,7 @@ class JFNKSolver {
   int NumMyElements;
 
 public:
-  JFNKSolver(int, int *, MPI_Comm &);
+  JFNKSolver(int, int *, MPI_Comm &, bool);
   ~JFNKSolver();
   void CreateJacobian();
   void Solve(double *, double *, double);

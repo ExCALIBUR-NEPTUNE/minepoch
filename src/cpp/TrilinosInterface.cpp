@@ -2,7 +2,7 @@
 
 extern "C" {
 
-  void init_trilinos_(int& NumMyElements, int* MyGlobalElements, int& ForComm, bool verbose) {
+  void init_trilinos_(int& NumMyElements, int* MyGlobalElements, int& ForComm, bool& verbose) {
 
     MPI_Comm Comm;
     // This function obtains a valid C handle to the Fortran MPI communicator

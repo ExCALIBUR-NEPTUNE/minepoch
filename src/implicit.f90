@@ -18,12 +18,12 @@ CONTAINS
 
   SUBROUTINE solve_implicit_pic
 
-    LOGICAL :: converged
+    LOGICAL :: converged, converged_local
     INTEGER :: ix, iy, iz, row, iters
     INTEGER, PARAMETER :: max_iters = 40
     REAL(C_DOUBLE), DIMENSION(:), ALLOCATABLE :: x, dir, f
     REAL(C_DOUBLE) :: max_delta, ep_conv
-    INTEGER :: problem_size
+    INTEGER :: problem_size, errcode
 
     problem_size = nx * ny * nz * nvar_solve
 
@@ -54,7 +54,7 @@ CONTAINS
 
     CALL computef(x, f)
 
-    ep_conv = nonlinear_tolerance + nonlinear_tolerance * DOT_PRODUCT(f, f)
+    ep_conv = nonlinear_tolerance + nonlinear_tolerance * SQRT(DOT_PRODUCT(f, f))
 
     DO WHILE (.NOT. converged)
 
@@ -65,10 +65,12 @@ CONTAINS
       x = x - dir
 
       CALL computef(x, f)
-      max_delta = DOT_PRODUCT(f, f)
+      max_delta = SQRT(DOT_PRODUCT(f, f))
 
-      ! TODO Implement MPI and checking
-      IF (max_delta < ep_conv) converged = .TRUE.
+      converged_local = max_delta < ep_conv
+      CALL MPI_ALLREDUCE(converged_local, converged, 1, MPI_LOGICAL, &
+          MPI_LAND, comm, errcode)
+
       iters = iters + 1
       IF (iters > max_iters) THEN
         PRINT*,'Too many iterations'

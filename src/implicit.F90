@@ -17,7 +17,7 @@ MODULE implicit
 CONTAINS
 
   SUBROUTINE solve_implicit_pic
-
+#ifdef TRILINOS
     LOGICAL :: converged, converged_local
     INTEGER :: ix, iy, iz, row, iters
     INTEGER, PARAMETER :: max_iters = 40
@@ -111,7 +111,7 @@ CONTAINS
     DEALLOCATE(x, dir)
     DEALLOCATE(x0)
     DEALLOCATE(f)
-
+#endif
   END SUBROUTINE solve_implicit_pic
 
 

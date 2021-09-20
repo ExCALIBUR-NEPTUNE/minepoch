@@ -18,6 +18,9 @@ MODULE current_deposition
 
 CONTAINS
 
+  !****************************************************************************
+  !> \brief Set run-time constants needed for current deposition module
+  !****************************************************************************
   SUBROUTINE setup_current_deposition
 
 
@@ -320,8 +323,12 @@ CONTAINS
 
 
 
-  ! Utility routine for calculating cell offsets and weights
-  ! at a position.
+  !****************************************************************************
+  !> \brief Utility routine for calculating cell offsets and weights
+  !>
+  !> @param[in,out] st Structure containing particle-to-grid data
+  !> @param[in] pos Position of particle
+  !****************************************************************************
   SUBROUTINE calc_stdata(pos,st)
     TYPE(fields_eval_tmps), INTENT(INOUT) :: st
     REAL(num), DIMENSION(3), INTENT(IN) :: pos
@@ -360,9 +367,9 @@ CONTAINS
     ! Also used to weight particle properties onto grid, used later
     ! to calculate J
     ! NOTE: These weights require an additional multiplication factor!
-    gx=0
-    gy=0
-    gz=0
+    gx = 0.0_num
+    gy = 0.0_num
+    gz = 0.0_num
 #include "bspline3/gx.inc"
 
     !Temporary storage for current deposition.

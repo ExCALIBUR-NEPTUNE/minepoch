@@ -9,6 +9,8 @@ treated.
 
 ## Compiling the code
 
+### Make
+
 The code can be compiled using make, and an appropriately set compiler variable, for example:
 
 ```
@@ -18,6 +20,21 @@ $ make COMPILER=gfortran
 The requirements are minimal, only a Fortran compiler and MPI are required to compile and run
 the code. The code is routinely run on both Linux and OS X, and tested with gfortran, but
 other compilers (e.g. `make COMPILER=intel`) ought to work.
+
+### CMake
+
+Alternatively minepoch can be compiled using cmake. For example:
+
+```
+$ mkdir build && cd build
+$ cmake ..
+$ make
+$ make install
+```
+
+By default minepoch will be installed to the `bin` subdirectory of the minepoch directory.
+
+After installation the temporary `build` directory may be deleted.
 
 ## Running the code
 

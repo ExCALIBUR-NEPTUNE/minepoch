@@ -1,6 +1,6 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-import argparse
 from scipy.constants import electron_mass as me, elementary_charge as qe
 from scipy.constants import epsilon_0 as ep0
 from scipy.optimize import curve_fit
@@ -36,6 +36,17 @@ def parse_arguments():
 
 def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
                         savefig=False, ne=8e11, analytic_rate=0.7):
+    """Two stream instability analysis
+
+    Args:
+        fname: Input filename. Default: Data/output.dat
+        plot: Control plotting. Default: True
+        check_growth: Control checking of growth rate. Default: True
+        savefig: Control saving of any plots. Default: False
+        ne: Electron number density. Default: 8e11 (m^{-3})
+        analytic_rate: Analytic growth rate to compare to. Default: 0.7
+    """
+
     # Cold plasma frequency
     omega = np.sqrt(ne * qe * qe / me / ep0)
 
@@ -44,14 +55,16 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
         # Plot analytic growth between t0 and t1
         t0 = 0.0
         t1 = 30.0
-        plt.plot([t0, t1], [1e-8, 1e-8*np.exp(analytic_rate*t1)], linestyle='--',
-                 color='black', label=('Theory (%.2F)' % analytic_rate))
+        plt.plot([t0, t1], [1e-8, 1e-8*np.exp(analytic_rate*t1)],
+                 linestyle='--', color='black',
+                 label=('Theory (%.2F)' % analytic_rate))
         plt.ylim(top=1e-2)
         plt.gca().yaxis.set_ticks_position('both')
         plt.xlabel(r'$\mathrm{t}\omega_{pe}$', fontsize=16)
         plt.ylabel(r'$\mathrm{Field Energy}$', fontsize=16)
         plt.tight_layout()
 
+    # If required, check growth rate against analytic value
     if check_growth:
         # Estimate linear growth rate
         times, _, fe = get_energies(fname)
@@ -84,6 +97,8 @@ def two_stream_analysis(fname='Data/output.dat', plot=True, check_growth=True,
         if savefig:
             plt.savefig('two_stream.png')
 
+    # If growth rate calculated return value and error.
+    # Otherwise return None, None
     if check_growth:
         return popt[0], np.sqrt(np.diag(pcov))[0]
 

@@ -126,10 +126,11 @@ CONTAINS
     REAL(num), DIMENSION(3) :: v_pred, errorx, errorv
     REAL(num), PARAMETER :: tolerance = 1e-10_num
     INTEGER, PARAMETER :: max_iters = 10
-    REAL(num) :: error, alpha, bsq
-    INTEGER :: iters
+    REAL(num) :: error, alpha, bsq, ssjfac
+    INTEGER :: iters, isubstep
 
     dt_sub = dt / species%nsubstep
+    ssjfac = dt_sub / dt
 
     current => species%attached_list%head
 
@@ -157,56 +158,58 @@ CONTAINS
       pos_guess = pos0
       vel_guess = vel0
 
-      ! Loop until converged
-      DO
-        ! Calculate half time-step values
-        pos_half = 0.5_num * (pos0 + pos_guess)
+      DO isubstep=1,species%nsubstep
+        ! Loop until converged
+        DO
+          ! Calculate half time-step values
+          pos_half = 0.5_num * (pos0 + pos_guess)
 
-        ! Fields at midpoint
-        CALL get_fields_at_point(pos_half,Bvec,Evec)
+          ! Fields at midpoint
+          CALL get_fields_at_point(pos_half,Bvec,Evec)
 
-        ! bfield squared
-        bsq = DOT_PRODUCT(Bvec, Bvec)
+          ! bfield squared
+          bsq = DOT_PRODUCT(Bvec, Bvec)
 
-        ! Predictor step
-        v_pred = vel0 + alpha * Evec
-        vel_half = (v_pred + alpha * cross(v_pred, Bvec) &
-            + alpha**2 * DOT_PRODUCT(v_pred, Bvec) * Bvec) / (1.0_num + alpha**2 * bsq)
+          ! Predictor step
+          v_pred = vel0 + alpha * Evec
+          vel_half = (v_pred + alpha * cross(v_pred, Bvec) &
+              + alpha**2 * DOT_PRODUCT(v_pred, Bvec) * Bvec) / (1.0_num + alpha**2 * bsq)
 
-        pos_trial = pos0 + vel_half * dt_sub
-        vel_trial = 2.0_num * vel_half - vel0
+          pos_trial = pos0 + vel_half * dt_sub
+          vel_trial = 2.0_num * vel_half - vel0
 
-        errorx = ABS(pos_guess - pos_trial)
-        errorv = ABS(vel_guess - vel_trial)
+          errorx = ABS(pos_guess - pos_trial)
+          errorv = ABS(vel_guess - vel_trial)
 
-        ! The velocity error is normalised by c.
-        ! This might not always be a good choice
-        error = MAX(MAXVAL(errorx), MAXVAL(errorv) / c)
+          ! The velocity error is normalised by c.
+          ! This might not always be a good choice
+          error = MAX(MAXVAL(errorx), MAXVAL(errorv) / c)
 
-        ! Check convergence
-        IF (error < tolerance) THEN
-          IF (update) THEN
-            current%part_pos = pos_trial
-            current%part_p = vel_trial * part_m
+          ! Check convergence
+          IF (error < tolerance) THEN
+            IF (update) THEN
+              current%part_pos = pos_trial
+              current%part_p = vel_trial * part_m
+            END IF
+            EXIT
           END IF
-          EXIT
-        END IF
 
-        ! Otherwise update guess and iterate again
-        pos_guess = pos_trial
-        vel_guess = vel_trial
-        iters = iters + 1
-        IF (iters > max_iters) THEN
-          PRINT*,'Too many iterations: ', iters
-          STOP
+          ! Otherwise update guess and iterate again
+          pos_guess = pos_trial
+          vel_guess = vel_trial
+          iters = iters + 1
+          IF (iters > max_iters) THEN
+            PRINT*,'Too many iterations: ', iters
+            STOP
+          END IF
+        END DO
+
+        IF (explicit_pic) THEN
+          CALL current_deposition_simple(pos_trial, vel_trial, part_w * part_q * ssjfac, jx, jy, jz)
+        ELSE
+          CALL current_deposition_simple(pos_half, vel_half, part_w * part_q * ssjfac, jx, jy, jz)
         END IF
       END DO
-
-      IF (explicit_pic) THEN
-        CALL current_deposition_simple(pos_trial, vel_trial, part_w * part_q, jx, jy, jz)
-      ELSE
-        CALL current_deposition_simple(pos_half, vel_half, part_w * part_q, jx, jy, jz)
-      END IF
       current => next
     END DO
 

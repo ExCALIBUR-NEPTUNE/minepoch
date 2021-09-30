@@ -322,6 +322,10 @@ MODULE shared_data
   ! Control implicit solver verbosity
   LOGICAL(C_BOOL) :: verbose_solver = .FALSE.
 
+  ! Control use of pseudocurrent correction
+  LOGICAL :: use_pseudo_current = .FALSE.
+  REAL(num) :: pseudo_current_fac = 0.01_num
+
   INTEGER, ALLOCATABLE, DIMENSION(:) :: linear_index
   INTEGER :: local_elements
 

@@ -26,4 +26,6 @@
   nspecies = 0,
   use_esirkepov = T,
   explicit_pic = T,
+  use_pseudo_current = F,
+  pseudo_current_fac = 0.01,
 /

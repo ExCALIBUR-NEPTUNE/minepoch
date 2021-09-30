@@ -70,9 +70,10 @@ CONTAINS
   END SUBROUTINE push_particles_2ndstep
 
 
-  SUBROUTINE push_particles(update)
+  SUBROUTINE push_particles(update, rho)
 
     LOGICAL, INTENT(IN) :: update
+    REAL(num), DIMENSION(-1:,-1:,-1:), INTENT(OUT), OPTIONAL :: rho
     INTEGER :: ispecies, isubstep
     TYPE(particle_species), POINTER :: species, next_species
 
@@ -95,7 +96,7 @@ CONTAINS
        IF (species%is_driftkinetic) THEN
           CALL push_particles_dk0(species)
        ELSE IF (species%is_implicit) THEN
-          CALL push_particles_implicit_split(species, update)
+          CALL push_particles_implicit_split(species, update, rho)
        ELSE
           DO isubstep=1,species%nsubstep
              CALL push_particles_boris_split(species)
@@ -111,10 +112,11 @@ CONTAINS
 
 
 
-  SUBROUTINE push_particles_implicit_split(species, update)
+  SUBROUTINE push_particles_implicit_split(species, update, rho)
 
     TYPE(particle_species), INTENT(INOUT) :: species
     LOGICAL, INTENT(IN) :: update
+    REAL(num), DIMENSION(-1:,-1:,-1:), INTENT(OUT), OPTIONAL :: rho
     TYPE(particle), POINTER :: current, next
     INTEGER(i8) :: ipart
     REAL(num), DIMENSION(3) :: Bvec, Evec
@@ -126,8 +128,13 @@ CONTAINS
     REAL(num), DIMENSION(3) :: v_pred, errorx, errorv
     REAL(num), PARAMETER :: tolerance = 1e-10_num
     INTEGER, PARAMETER :: max_iters = 10
-    REAL(num) :: error, alpha, bsq, ssjfac
-    INTEGER :: iters, isubstep
+    REAL(num) :: error, alpha, bsq, ssjfac, iv, wdata
+    INTEGER :: iters, isubstep, ix, iy, iz
+#include "particle_head.inc"
+
+    ! If charge density is requested, initialise to zero
+    IF (PRESENT(rho)) rho = 0.0_num
+    iv = 1.0_num / dx / dy / dz
 
     dt_sub = dt / species%nsubstep
     ssjfac = dt_sub / dt
@@ -204,12 +211,55 @@ CONTAINS
           END IF
         END DO
 
+        ! Add (possibly subcycled) current contribution
         IF (explicit_pic) THEN
           CALL current_deposition_simple(pos_trial, vel_trial, part_w * part_q * ssjfac, jx, jy, jz)
         ELSE
           CALL current_deposition_simple(pos_half, vel_half, part_w * part_q * ssjfac, jx, jy, jz)
         END IF
       END DO
+
+      ! Add contribution to charge density if requested
+      IF (PRESENT(rho)) THEN
+        wdata = part_q * part_w
+#ifdef PARTICLE_SHAPE_TOPHAT
+        cell_x_r = (pos_trial(1) - x_grid_min_local) / dx - 0.5_num
+        cell_y_r = (pos_trial(2) - y_grid_min_local) / dy - 0.5_num
+        cell_z_r = (pos_trial(3) - z_grid_min_local) / dz - 0.5_num
+#else
+        cell_x_r = (pos_trial(1) - x_grid_min_local) / dx
+        cell_y_r = (pos_trial(2) - y_grid_min_local) / dy
+        cell_z_r = (pos_trial(3) - z_grid_min_local) / dz
+#endif
+
+        cell_x = FLOOR(cell_x_r + 0.5_num)
+        cell_y = FLOOR(cell_y_r + 0.5_num)
+        cell_z = FLOOR(cell_z_r + 0.5_num)
+        cell_frac_x = REAL(cell_x, num) - cell_x_r
+        cell_frac_y = REAL(cell_y, num) - cell_y_r
+        cell_frac_z = REAL(cell_z, num) - cell_z_r
+        cell_x = cell_x + 1
+        cell_y = cell_y + 1
+        cell_z = cell_z + 1
+
+#ifdef PARTICLE_SHAPE_BSPLINE3
+#include "bspline3/gxfac.inc"
+#elif  PARTICLE_SHAPE_TOPHAT
+#include "tophat/gxfac.inc"
+#else
+#include "triangle/gxfac.inc"
+#endif
+
+        DO iz = sf_min, sf_max
+        DO iy = sf_min, sf_max
+        DO ix = sf_min, sf_max
+          rho(cell_x+ix, cell_y+iy, cell_z+iz) = &
+              rho(cell_x+ix, cell_y+iy, cell_z+iz) &
+              + gx(ix) * gy(iy) * gz(iz) * wdata
+        END DO
+        END DO
+        END DO
+      END IF
       current => next
     END DO
 

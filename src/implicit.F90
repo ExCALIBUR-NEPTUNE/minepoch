@@ -2,12 +2,14 @@ MODULE implicit
 
   USE iso_c_binding
   USE boundary
+  USE calc_df
   USE particles
   USE shared_data
 
   IMPLICIT NONE
 
   REAL(num), DIMENSION(:), ALLOCATABLE :: x0
+  REAL(num), DIMENSION(:,:,:), ALLOCATABLE :: rho0, rho
   ! Number of independent variables.
   INTEGER, PARAMETER :: nvar_solve = 6
 
@@ -30,6 +32,15 @@ CONTAINS
     ALLOCATE(x(problem_size), dir(problem_size))
     ALLOCATE(x0(problem_size))
     ALLOCATE(f(problem_size))
+
+    ! If using pseudo current correction to Gauss' law, calculate
+    ! initial charge density
+    IF (use_pseudo_current) THEN
+      ALLOCATE(rho0(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+      ALLOCATE(rho(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
+      CALL calc_charge_density(rho0)
+      CALL processor_summation_bcs(rho0, ng)
+    END IF
 
     converged = .FALSE.
     iters = 0
@@ -111,6 +122,10 @@ CONTAINS
     DEALLOCATE(x, dir)
     DEALLOCATE(x0)
     DEALLOCATE(f)
+    IF (use_pseudo_current) THEN
+      DEALLOCATE(rho0, rho)
+    END IF
+
 #endif
   END SUBROUTINE solve_implicit_pic
 
@@ -189,7 +204,9 @@ CONTAINS
     REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(IN) :: ex, ey, ez
     REAL(num), DIMENSION(1-ng:,1-ng:,1-ng:), INTENT(IN) :: bx, by, bz
     REAL(num), DIMENSION(nx*ny*nz*nvar_solve), INTENT(OUT) :: rhs
+    REAL(num), DIMENSION(:,:,:), ALLOCATABLE :: fcorr
     REAL(num) :: c2idx, c2idy, c2idz, idx, idy, idz
+    REAL(num) :: div_e
     INTEGER :: ix, iy, iz, row
 
     idx = 1.0_num / dx
@@ -199,9 +216,14 @@ CONTAINS
     c2idy = c**2 * idy
     c2idz = c**2 * idz
 
-    ! Need to add j here
-    CALL push_particles(.FALSE.)
+    IF (use_pseudo_current) THEN
+      CALL push_particles(.FALSE., rho)
+      CALL processor_summation_bcs(rho, ng)
+    ELSE
+      CALL push_particles(.FALSE.)
+    END IF
 
+    ! Calculate RHS according to Maxwell's equations
     DO iz = 1, nz
       DO iy = 1, ny
         DO ix = 1, nx
@@ -224,6 +246,44 @@ CONTAINS
         END DO
       END DO
     END DO
+
+    ! Now loop over cells calculating pseudocurrent
+    IF (use_pseudo_current) THEN
+      ALLOCATE(fcorr(1:nx+1, 1:ny+1, 1:nz+1))
+      fcorr = 0.0_num
+      DO iz = 1, nz+1
+        DO iy = 1, ny+1
+          DO ix = 1, nx+1
+            ! E field divergence
+            div_e = (ex(ix,iy,iz) - ex(ix-1,iy,iz)) / dx &
+                  + (ey(ix,iy,iz) - ey(ix,iy-1,iz)) / dy &
+                  + (ez(ix,iy,iz) - ez(ix,iy,iz-1)) / dz
+            fcorr(ix,iy,iz) = (div_e &
+                - 0.5_num * (rho(ix,iy,iz) + rho0(ix,iy,iz)) / epsilon0) &
+                * pseudo_current_fac
+          END DO
+        END DO
+      END DO
+      ! Clamp F to zero at boundary
+      IF (x_min_boundary) fcorr(1,:,:) = 0.0_num
+      IF (x_max_boundary) fcorr(nx+1,:,:) = 0.0_num
+      IF (y_min_boundary) fcorr(:,1,:) = 0.0_num
+      IF (y_max_boundary) fcorr(:,ny+1,:) = 0.0_num
+      IF (z_min_boundary) fcorr(:,:,1) = 0.0_num
+      IF (z_max_boundary) fcorr(:,:,nz+1) = 0.0_num
+      ! Now add contribution to RHS
+      DO iz = 1, nz
+        DO iy = 1, ny
+          DO ix = 1, nx
+            row = index1d(ix,iy,iz)
+            rhs(row+1) = rhs(row+1) + (fcorr(ix+1,iy,iz) - fcorr(ix,iy,iz)) / epsilon0 / dx
+            rhs(row+2) = rhs(row+2) + (fcorr(ix,iy+1,iz) - fcorr(ix,iy,iz)) / epsilon0 / dy
+            rhs(row+3) = rhs(row+3) + (fcorr(ix,iy,iz+1) - fcorr(ix,iy,iz)) / epsilon0 / dz
+          END DO
+        END DO
+      END DO
+      DEALLOCATE(fcorr)
+    END IF
 
   END SUBROUTINE calculate_rhs
 

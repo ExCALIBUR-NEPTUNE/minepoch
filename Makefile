@@ -307,7 +307,7 @@ fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
 helper.o: helper.F90 boundary.o deltaf_loader.o particle_init.o partlist.o \
   strings.o utilities.o
-implicit.o: implicit.F90 boundary.o particles.o shared_data.o
+implicit.o: implicit.F90 boundary.o calc_df.o particles.o shared_data.o
 ic_module.o: ic_module.f90 helper.o setup.o shared_data.o fields.o
 laser.o: laser.f90 custom_laser.o
 mpi_routines.o: mpi_routines.F90 helper.o

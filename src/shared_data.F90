@@ -324,7 +324,7 @@ MODULE shared_data
 
   ! Control use of pseudocurrent correction
   LOGICAL :: use_pseudo_current = .FALSE.
-  REAL(num) :: pseudo_current_fac = 0.01_num
+  REAL(num) :: pseudo_current_fac = 1e-8_num
 
   INTEGER, ALLOCATABLE, DIMENSION(:) :: linear_index
   INTEGER :: local_elements

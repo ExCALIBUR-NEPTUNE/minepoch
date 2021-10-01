@@ -38,10 +38,25 @@ After installation the temporary `build` directory may be deleted.
 
 ### Compiling implicit PIC
 
-The implicit solver requires Trilinos. To compile:
+The implicit solver requires an installation of Trilinos. The implicit development of
+minEPOCH was carried out using [v12.6.3](https://github.com/trilinos/Trilinos/releases/tag/trilinos-release-12-6-3)
+but other versions should be compatible. To compile using the Makefile system, the
+`Makefile.export.Trilinos` file should be copied (or symlinked) to the mineEPOCH directory:
+
+```
+ln -s /trilinos/12.6.3/include/Makefile.export.Trilinos Makefile.export.Trilinos
+```
+
+The Trilinos support is then enabled at compile time for minEPOCH:
 
 ```
 make COMPILER=gfortran DEF=-DTRILINOS
+```
+
+A Docker image containing all the required dependencies is available:
+
+```
+docker pull tomgoffrey/minepoch_deps:latest
 ```
 
 ## Running the code

@@ -74,7 +74,7 @@ jobs:
           make COMPILER=gfortran
           ./bin/particle_momentum_test
           python3 check_test.py
-          
+
   build-cmake:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -101,7 +101,7 @@ jobs:
           ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py --disable_plots
-          
+
   build-implicit:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -116,6 +116,5 @@ jobs:
       # Build minepoch
       - name: Build
         run: |
-          ln -s /trilinos/include/Makefile.export.Trilinos Makefile.export.Trilinos
-          make DEF=-DTRILINOS
-
+          ln -s /trilinos/12.6.3/include/Makefile.export.Trilinos Makefile.export.Trilinos
+          make COMPILER=gfortran DEF=-DTRILINOS

@@ -16,7 +16,7 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains two jobs called "build" and "build-cmake"
+  # This workflow contains three jobs called "build" and "build-cmake" and "build-implicit"
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -101,4 +101,21 @@ jobs:
           ./bin/epoch3d
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           python3 minepoch_py/test.py --disable_plots
+          
+  build-implicit:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    container: docker://tomgoffrey/minepoch_deps:latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      # Build minepoch
+      - name: Build
+        run: |
+          ln -s /trilinos/include/Makefile.export.Trilinos Makefile.export.Trilinos
+          make DEF=-DTRILINOS
 

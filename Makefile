@@ -279,6 +279,7 @@ tarball:
 
 docs:
 	@cd Docs; latexmk -pdf report_implemented.tex
+	@cd Docs; latexmk -pdf implicit_pic.tex
 
 cleandocs:
 	@cd Docs; rm -f *.aux *.bbl *.blg *.fdb_latexmk *.fls *.log *.out *.pdf

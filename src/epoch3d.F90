@@ -21,6 +21,7 @@ PROGRAM pic
   USE fields
   USE helper
   USE ic_module
+  USE implicit
   USE mpi_routines
   USE particles
   USE setup
@@ -103,10 +104,21 @@ PROGRAM pic
   ! .TRUE. to over_ride balance fraction check
   IF (npart_global > 0) CALL balance_workload(.TRUE.)
 
-  CALL particle_bcs
-  CALL efield_bcs(ex, ey, ez, ng)
-  CALL bfield_final_bcs(bx, by, bz, ng)
-
+  IF (explicit_pic) THEN
+    CALL particle_bcs
+    CALL efield_bcs(ex, ey, ez, ng)
+    CALL bfield_final_bcs(bx, by, bz, ng)
+  ELSE
+#ifdef TRILINOS
+    CALL init_1d_index
+    CALL init_trilinos(local_elements, linear_index, comm, verbose_solver)
+#else
+    IF (rank == 0) THEN
+      PRINT*, 'Implicit PIC must be enabled at compile time: -DEF=TRILINOS'
+    END IF
+    CALL MPI_ABORT(MPI_COMM_WORLD, c_err_pp_options_wrong, ierr)
+#endif
+  END IF
 
   IF (rank == 0) PRINT *, 'Equilibrium set up OK, running code'
 
@@ -129,38 +141,46 @@ PROGRAM pic
       timer_first(c_timer_step) = timer_walltime
     ENDIF
     push = (time >= particle_push_start_time)
-    CALL update_eb_fields_half
 
-    IF (push) THEN
-      ! .FALSE. this time to use load balancing threshold
-      IF (use_balance) CALL balance_workload(.FALSE.)
-      CALL push_particles
-    ENDIF
+    IF (explicit_pic) THEN
+      CALL update_eb_fields_half
+
+      IF (push) THEN
+        ! .FALSE. this time to use load balancing threshold
+        IF (use_balance) CALL balance_workload(.FALSE.)
+        CALL push_particles(.TRUE.)
+      ENDIF
 
 #ifdef PAT_DEBUG
-    CALL pat_mpi_monitor(step,1)
+      CALL pat_mpi_monitor(step,1)
 #endif
+      step = step + 1
+      time = time + dt
 
-   step = step + 1
-   time = time + dt
-   CALL update_eb_fields_final
-    ! At this point, do the second substep of the push if there are any drift-kinetic particles
-   IF (drift_kinetic_species_exist) THEN
-       step=step-1
-       time=time-dt
-       IF (push) THEN
+      CALL update_eb_fields_final
+      ! At this point, do the second substep of the push if there are any drift-kinetic particles
+      IF (drift_kinetic_species_exist) THEN
+        step=step-1
+        time=time-dt
+        IF (push) THEN
           CALL push_particles_2ndstep
-       END IF
-       !Rewind the fields half a step
-       CALL rewind_fields_halfstep
-       !Then update using corrected current.
-       step = step + 1
-       time = time + dt
-       CALL update_eb_fields_final      
+        END IF
+        ! Rewind the fields half a step
+        CALL rewind_fields_halfstep
+        ! Then update using corrected current.
+        step = step + 1
+        time = time + dt
+        CALL update_eb_fields_final
+      END IF
+    ELSE
+      CALL solve_implicit_pic
+      step = step + 1
+      time = time + dt
     END IF
 
     IF ((step >= nsteps .AND. nsteps >= 0) .OR. (time >= t_end)) EXIT
 
+    ! Output any diagnostics
     CALL output_routines(step)
 
     ! This section ensures that the particle count for the species_list
@@ -191,6 +211,12 @@ PROGRAM pic
     CALL create_full_timestring(runtime, timestring)
     WRITE(*,*) 'Final runtime of core = ' // TRIM(timestring)
   ENDIF
+
+#ifdef TRILINOS
+  IF (.NOT. explicit_pic) THEN
+    CALL end_trilinos
+  END IF
+#endif
 
   CALL finalise
 

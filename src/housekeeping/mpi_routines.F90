@@ -342,8 +342,7 @@ CONTAINS
     ALLOCATE(jy(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
     ALLOCATE(jz(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
 
-
-!   For two-step RK.
+    ! For two-step RK.
     ALLOCATE(ex_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
     ALLOCATE(ey_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
     ALLOCATE(ez_back(1-ng:nx+ng, 1-ng:ny+ng, 1-ng:nz+ng))
@@ -353,6 +352,14 @@ CONTAINS
     ALLOCATE(jx_d(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
     ALLOCATE(jy_d(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
     ALLOCATE(jz_d(1-jng:nx+jng, 1-jng:ny+jng, 1-jng:nz+jng))
+
+    ! If needed, set-up 1D index
+    IF (.NOT. explicit_pic) THEN
+      ! Number of elements in local problem
+      local_elements = nx * ny * nz * 6
+      ALLOCATE(linear_index(local_elements))
+      linear_index = 0
+    END IF
 
     ! Setup the particle lists
 

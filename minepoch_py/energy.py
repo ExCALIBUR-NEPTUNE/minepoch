@@ -94,7 +94,7 @@ def plot_field_energy(fname='Data/output.dat', xscale=1.0, dbg=False, ylog=False
 
 
 def energy_check(fname='Data/output.dat', tolerance=None, label=None,
-                 plot=True, savefig=False):
+                 plot=True, savefig=False, signedplot=True):
     """Check quality of energy conservation from minEPOCH simulation
 
     Args:
@@ -103,6 +103,7 @@ def energy_check(fname='Data/output.dat', tolerance=None, label=None,
         label: Label for data set when plotting. Default: None
         plot: Control optional plotting. Default: True
         savefig: Control saving of figure. Default: False
+	signedplot: Plot +/- errors, or just absolute values. Default: True
     """
 
     # Calculate total energy as a function of time
@@ -112,8 +113,11 @@ def energy_check(fname='Data/output.dat', tolerance=None, label=None,
     # If plotting requested produce plot of energy conservation error as
     # a function of time
     if plot:
-        plt.plot(times, (total_energy - total_energy[0]) / total_energy[0],
-                 label=label)
+        if signedplot:
+            data = total_energy - total_energy[0]
+        else:
+            data = np.abs(total_energy - total_energy[0])
+        plt.plot(times, data / total_energy[0], label=label)
         plt.xlabel(r'$\mathrm{t (s)}$', fontsize=16)
         plt.ylabel(r'$\frac{\Delta \epsilon}{\epsilon(t=0)}$', fontsize=16)
         plt.xlim(left=times[0])

@@ -130,7 +130,6 @@ ifeq ($(strip $(COMPILER)),archer)
 endif
 
 FFLAGS += $(MODULEFLAG)
-LDFLAGS = $(FFLAGS)
 
 # Set some of the build parameters
 TARGET = epoch3d
@@ -163,6 +162,33 @@ DEFINES += $(D)PARTICLE_SHAPE_BSPLINE3
 # are enabled.
 #DEFINES += $(D)PARSER_CHECKING
 
+# Enable linking with Trilinos
+#DEFINES += $(D)TRILINOS
+
+ifneq (,$(findstring TRILINOS,$(DEFINES)))
+  # Up to the user to create, copy, or link this file
+  include Makefile.export.Trilinos
+  # Trilinos libraries and header files
+  INCLUDE = $(Trilinos_INCLUDE_DIRS) $(Trilinos_TPL_INCLUDE_DIRS)
+  LIBDIR = $(Trilinos_LIBRARY_DIRS) $(Trilinos_TPL_LIBRARY_DIRS)
+  LIB = $(Trilinos_LIBRARIES) $(Trilinos_TPL_LIBRARIES)
+  LDFLAGS = $(LIBDIR) $(LIB) $(Trilinos_EXTRA_LD_FLAGS)
+  CXX = $(Trilinos_CXX_COMPILER)
+  CXXFLAGS = $(Trilinos_CXX_COMPILER_FLAGS)
+  # Check for clang. If so use CXX as linker
+  CLANG := $(shell $(CXX) --version | grep 'clang')
+  ifneq ($(CLANG),)
+    LD = $(CXX)
+  else
+    LDFLAGS+= -lstdc++
+  endif
+endif
+
+# Use FC for LD unless specified otherwise
+ifeq ($(origin LD),default)
+  LD = $(FC)
+  LDFLAGS += $(FFLAGS)
+endif
 
 # --------------------------------------------------
 # Shouldn't need to touch below here
@@ -185,7 +211,7 @@ FC_INFO := $(shell ${FC} --version 2>/dev/null \
 
 SRCFILES = balance.F90 boundary.f90 calc_df.F90 current_deposition.F90 \
   custom_laser.f90 deck.f90 diagnostics.F90 epoch3d.F90 fields.f90 finish.f90 \
-  helper.F90 ic_module.f90 laser.f90 mpi_routines.F90 mpi_subtype_control.f90 \
+  helper.F90 ic_module.f90 implicit.F90 laser.f90 mpi_routines.F90 mpi_subtype_control.f90 \
   particle_init.F90 particle_temperature.F90 particles.F90 partlist.F90 \
   problem_setup.f90 random_generator.f90 redblack_module.f90 setup.F90 \
   shared_data.F90 strings.f90 timer.f90 utilities.F90 version_data.F90 \
@@ -193,6 +219,18 @@ SRCFILES = balance.F90 boundary.f90 calc_df.F90 current_deposition.F90 \
 
 OBJFILES := $(SRCFILES:.f90=.o)
 OBJFILES := $(OBJFILES:.F90=.o)
+
+# C++/Trilinos Interface Files
+ifneq (,$(findstring TRILINOS,$(DEFINES)))
+  CPPDIR = $(SRCDIR)/cpp
+
+  SRCFILESCPP = JFNKInterface.o JFNKSolver.cpp TrilinosInterface.cpp
+
+  OBJFILES += $(SRCFILESCPP:.cpp=.o)
+
+  # Dependencies
+  TRILINOSDEPS = JFNKInterface.o JFNKSolver.o TrilinosInterface.o
+endif
 
 INCLUDES = $(INCDIR)/bspline3/b_part.inc $(INCDIR)/bspline3/e_part.inc \
   $(INCDIR)/bspline3/gx.inc $(INCDIR)/bspline3/gxfac.inc \
@@ -203,7 +241,7 @@ OBJFILES := $(OBJFILES)
 FULLTARGET = $(BINDIR)/$(TARGET)
 
 VPATH = $(SRCDIR):$(SRCDIR)/deck:$(SRCDIR)/housekeeping:$(SRCDIR)/io:\
-  $(SRCDIR)/parser:$(SRCDIR)/user_interaction:$(OBJDIR)
+  $(SRCDIR)/parser:$(SRCDIR)/user_interaction:$(CPPDIR):$(OBJDIR)
 
 $(SRCDIR)/COMMIT: FORCE
 	@sh $(SRCDIR)/gen_commit_string.sh || $(MAKE) $(MAKECMDGOALS)
@@ -217,10 +255,13 @@ $(SRCDIR)/COMMIT: FORCE
 %.o: %.F90
 	$(FC) -c $(FFLAGS) -o $(OBJDIR)/$@ $(PREPROFLAGS) $<
 
+%.o: %.cpp
+	$(CXX) -c $(CXXFLAGS) $(Trilinos_INCLUDE_DIRS) $(Trilinos_TPL_INCLUDE_DIRS) -o $(OBJDIR)/$@ $<
+
 main: $(FULLTARGET)
 $(FULLTARGET): $(OBJFILES)
 	@mkdir -p $(BINDIR)
-	$(FC) -o $@ $(addprefix $(OBJDIR)/,$(OBJFILES)) $(LDFLAGS)
+	$(LD) -o $@ $(addprefix $(OBJDIR)/,$(OBJFILES)) $(LDFLAGS)
 
 clean:
 	@rm -rf $(BINDIR) $(OBJDIR)
@@ -238,6 +279,7 @@ tarball:
 
 docs:
 	@cd Docs; latexmk -pdf report_implemented.tex
+	@cd Docs; latexmk -pdf implicit_pic.tex
 
 cleandocs:
 	@cd Docs; rm -f *.aux *.bbl *.blg *.fdb_latexmk *.fls *.log *.out *.pdf
@@ -260,12 +302,13 @@ custom_laser.o: custom_laser.f90 shared_data.o
 deck.o: deck.f90 shared_data.o timer.o fields.o
 diagnostics.o: diagnostics.F90 calc_df.o shared_data.o strings.o timer.o
 epoch3d.o: epoch3d.F90 balance.o deck.o diagnostics.o fields.o finish.o \
-  helper.o ic_module.o mpi_routines.o particles.o problem_setup.o \
-  shared_data.o setup.o welcome.o pat_mpi_lib_interface.o
+  helper.o implicit.o ic_module.o mpi_routines.o particles.o problem_setup.o \
+  setup.o shared_data.o $(TRILINOSDEPS) welcome.o pat_mpi_lib_interface.o
 fields.o: fields.f90 boundary.o
 finish.o: finish.f90 laser.o partlist.o
 helper.o: helper.F90 boundary.o deltaf_loader.o particle_init.o partlist.o \
   strings.o utilities.o
+implicit.o: implicit.F90 boundary.o calc_df.o particles.o shared_data.o
 ic_module.o: ic_module.f90 helper.o setup.o shared_data.o fields.o
 laser.o: laser.f90 custom_laser.o
 mpi_routines.o: mpi_routines.F90 helper.o

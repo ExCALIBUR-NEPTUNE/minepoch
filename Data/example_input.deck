@@ -25,4 +25,7 @@
   particle_push_start_time = 0.0,
   nspecies = 0,
   use_esirkepov = T,
+  explicit_pic = T,
+  use_pseudo_current = F,
+  pseudo_current_fac = 1e-8,
 /

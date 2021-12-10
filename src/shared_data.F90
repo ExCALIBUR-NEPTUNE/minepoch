@@ -4,6 +4,8 @@
 
 MODULE constants
 
+  USE ISO_C_BINDING
+
   IMPLICIT NONE
 
   INTEGER, PARAMETER :: num = KIND(1.d0)
@@ -70,9 +72,11 @@ MODULE constants
   INTEGER, PARAMETER :: c_err_other = 2**10
   INTEGER, PARAMETER :: c_err_warn_bad_value = 2**11
   INTEGER, PARAMETER :: c_err_generic_warning = 2**12
-  INTEGER, PARAMETER :: c_err_generic_error = 2**13
-  INTEGER, PARAMETER :: c_err_io = 2**14
-  INTEGER, PARAMETER :: c_err_setup = 2**15
+  INTEGER, PARAMETER :: c_err_io = 2**13
+  INTEGER, PARAMETER :: c_err_setup = 2**14
+  ! Fortran-C Interop. error codes
+  INTEGER(C_INT), BIND(C, name='c_err_not_implemented') :: c_err_not_implemented = 2**15
+  INTEGER, PARAMETER :: c_err_generic_error = 2**16
 
   INTEGER, PARAMETER :: c_ds_first = 1
   INTEGER, PARAMETER :: c_ds_last = 2
@@ -308,6 +312,22 @@ MODULE shared_data
 
   ! Control use of Esirkepov (charge conserving) current deposition
   LOGICAL :: use_esirkepov = .TRUE.
+
+  ! Switch between explicit PIC and implicit PIC
+  LOGICAL :: explicit_pic = .TRUE.
+
+  ! Tolerances for implicit solve
+  REAL(num) :: linear_tolerance = 1e-6_num
+  REAL(num) :: nonlinear_tolerance = 1e-6_num
+  ! Control implicit solver verbosity
+  LOGICAL(C_BOOL) :: verbose_solver = .FALSE.
+
+  ! Control use of pseudocurrent correction
+  LOGICAL :: use_pseudo_current = .FALSE.
+  REAL(num) :: pseudo_current_fac = 1e-8_num
+
+  INTEGER, ALLOCATABLE, DIMENSION(:) :: linear_index
+  INTEGER :: local_elements
 
   REAL(num) :: dt, t_end, time, dt_multiplier, dt_laser, dt_plasma_frequency
   REAL(num) :: cfl

@@ -68,4 +68,59 @@ CONTAINS
 
   END SUBROUTINE calc_total_energy_sum
 
+
+
+  SUBROUTINE calc_charge_density(charge_density)
+
+    REAL(num), INTENT(OUT), DIMENSION(1-ng:, 1-ng:, 1-ng:) :: charge_density
+    REAL(num) :: iv, part_w, part_q, wdata
+    INTEGER :: ispecies, ix, iy, iz
+    TYPE(particle), POINTER :: current
+    TYPE(particle_species), POINTER :: species, next_species
+#include "particle_head.inc"
+
+    charge_density = 0.0_num
+
+    IF (n_species < 1) RETURN
+
+    iv = 1.0_num / dx / dy / dz
+
+    ! Loop over all species to calculate charge density
+    next_species => species_list
+    DO ispecies = 1, n_species
+      species => next_species
+      next_species => species%next
+
+      current => species%attached_list%head
+
+      IF (.NOT. particles_uniformly_distributed) THEN
+        part_w = species%weight
+      END IF
+
+      DO WHILE (ASSOCIATED(current))
+        IF (particles_uniformly_distributed) THEN
+          part_w = current%weight
+        END IF
+        part_q = current%charge
+
+        wdata = part_q * part_w
+
+#include "particle_to_grid.inc"
+
+        DO iz = sf_min, sf_max
+        DO iy = sf_min, sf_max
+        DO ix = sf_min, sf_max
+          charge_density(cell_x+ix, cell_y+iy, cell_z+iz) = &
+              charge_density(cell_x+ix, cell_y+iy, cell_z+iz) &
+              + gx(ix) * gy(iy) * gz(iz) * wdata
+        END DO
+        END DO
+        END DO
+
+        current => current%next
+      END DO
+    END DO
+
+  END SUBROUTINE calc_charge_density
+
 END MODULE calc_df

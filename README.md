@@ -176,6 +176,15 @@ similar for `y_probes` and `z_probes`.
 The field probes provide human readable data for the electric and magnetic field components as a function
 of time, as well as some basic grid information to allow for convenient analysis.
 
+Additionally the time history of particle momentum and Poynting vector summed over the computational domain
+maybe output to a file `Data/momentum.dat` by setting
+
+```
+write_momentum = T,
+```
+
+in the `CONTROL` block of the `input.deck` file.
+
 ## Further Details
 
  - Information regarding the low noise PIC algorithm can be found in ExCALIBUR-NEPTUNE report 2047355-TN-03

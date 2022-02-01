@@ -70,6 +70,93 @@ CONTAINS
 
 
 
+  SUBROUTINE calc_total_momentum_sum
+
+    REAL(num) :: particle_px, particle_py, particle_pz
+    REAL(num) :: field_px, field_py, field_pz
+    REAL(num) :: part_w
+    REAL(num) :: ex_cc, ey_cc, ez_cc
+    REAL(num) :: bx_cc, by_cc, bz_cc
+    REAL(num) :: sum_out(6), sum_in(6)
+    REAL(num), PARAMETER :: c2 = c**2
+    INTEGER :: ispecies, i, j, k, im, jm, km
+    TYPE(particle), POINTER :: current
+    TYPE(particle_species), POINTER :: species, next_species
+
+    particle_px = 0.0_num
+    particle_py = 0.0_num
+    particle_pz = 0.0_num
+
+    ! Sum over all particles to calculate total momentum
+    next_species => species_list
+    DO ispecies = 1, n_species
+      species => next_species
+      next_species => species%next
+
+      current => species%attached_list%head
+      part_w = species%weight
+
+      DO WHILE (ASSOCIATED(current))
+        IF (particles_uniformly_distributed) THEN
+          part_w = current%weight
+        ENDIF
+        particle_px = particle_px + current%part_p(1) * part_w
+        particle_py = particle_py + current%part_p(2) * part_w
+        particle_pz = particle_pz + current%part_p(3) * part_w
+
+        current => current%next
+      ENDDO
+    ENDDO
+
+    ! Total EM field momentum
+    field_px = 0.0_num
+    field_py = 0.0_num
+    field_pz = 0.0_num
+
+    DO k = 1, nz
+      km  = k - 1
+      DO j = 1, ny
+        jm = j - 1
+        DO i = 1, nx
+          im = i - 1
+          ex_cc = 0.5_num  * (ex(im, j , k ) + ex(i , j , k ))
+          ey_cc = 0.5_num  * (ey(i , jm, k ) + ey(i , j , k ))
+          ez_cc = 0.5_num  * (ez(i , j , km) + ez(i , j , k ))
+
+          bx_cc = 0.25_num * (bx(i , jm, km) + bx(i , j , km) &
+                           +  bx(i , jm, k ) + bx(i , j , k ))
+          by_cc = 0.25_num * (by(im, j , km) + by(i , j , km) &
+                           +  by(im, j , k ) + by(i , j , k ))
+          bz_cc = 0.25_num * (bz(im, jm, k ) + bz(i , jm, k  ) &
+                           +  bz(im, j  ,k ) + bz(i , j , k  ))
+
+          field_px = field_px + (ey_cc * bz_cc - ez_cc * by_cc) / mu0
+          field_py = field_py + (ez_cc * bx_cc - ex_cc * bz_cc) / mu0
+          field_pz = field_pz + (ex_cc * by_cc - ey_cc * bx_cc) / mu0
+    ENDDO
+    ENDDO
+    ENDDO
+
+    sum_out(1) = particle_px
+    sum_out(2) = particle_py
+    sum_out(3) = particle_pz
+    sum_out(4) = field_px * dx * dy * dz / c2
+    sum_out(5) = field_py * dx * dy * dz / c2
+    sum_out(6) = field_pz * dx * dy * dz / c2
+
+    CALL MPI_REDUCE(sum_out, sum_in, 6, mpireal, MPI_SUM, 0, comm, errcode)
+
+    total_px_part = sum_in(1)
+    total_py_part = sum_in(2)
+    total_pz_part = sum_in(3)
+    total_px_field = sum_in(4)
+    total_py_field = sum_in(5)
+    total_pz_field = sum_in(6)
+
+  END SUBROUTINE calc_total_momentum_sum
+
+
+
   SUBROUTINE calc_charge_density(charge_density)
 
     REAL(num), INTENT(OUT), DIMENSION(1-ng:, 1-ng:, 1-ng:) :: charge_density

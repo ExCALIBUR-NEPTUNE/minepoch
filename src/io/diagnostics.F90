@@ -49,6 +49,8 @@ CONTAINS
 
     IF (n_field_probes > 0) CALL write_field_probes(step)
 
+    IF (write_momentum) CALL momentum_history(step)
+
   END SUBROUTINE output_routines
 
 
@@ -297,5 +299,65 @@ CONTAINS
     ENDIF
 
   END SUBROUTINE time_history
+
+
+
+  SUBROUTINE momentum_history(step)   ! step = step index
+
+    INTEGER, INTENT(INOUT) :: step
+    CHARACTER(LEN=11+data_dir_max_length) :: full_filename
+    LOGICAL, SAVE :: first_call = .TRUE.
+    INTEGER :: errcode
+    INTEGER, PARAMETER :: fu = 67
+    LOGICAL, PARAMETER :: do_flush = .TRUE.
+    INTEGER, PARAMETER :: dump_frequency = 10
+
+    full_filename = TRIM(data_dir) // '/momentum.dat'
+
+    IF (first_call) THEN
+      ! open the file
+      IF (rank == 0) THEN
+        OPEN(unit=fu, status='REPLACE', file=TRIM(full_filename), &
+            iostat=errcode)
+        IF (errcode /= 0) THEN
+          PRINT*, 'Failed to open file: ', TRIM(full_filename)
+          CALL MPI_ABORT(MPI_COMM_WORLD, c_err_io, errcode)
+        END IF
+        WRITE(fu,'(''# '',a5,99a23)') 'step', &
+            'px_part', 'py_part', 'pz_part', &
+            'px_field', 'py_field', 'pz_field'
+        IF (do_flush) CLOSE(unit=fu)
+      ENDIF
+      first_call = .FALSE.
+    ENDIF
+
+    IF (MOD(step, dump_frequency) /= 0) RETURN
+
+    IF (timer_collect) THEN
+      IF (timer_walltime < 0.0_num) THEN
+        CALL timer_start(c_timer_io)
+      ELSE
+        CALL timer_start(c_timer_io, .TRUE.)
+      ENDIF
+    ENDIF
+
+    io_list => species_list
+
+    CALL calc_total_momentum_sum
+
+    IF (rank == 0) THEN
+      IF (do_flush) THEN
+        OPEN(unit=fu, status='OLD', position='APPEND', &
+            file=TRIM(full_filename), iostat=errcode)
+      ENDIF
+
+      WRITE(fu,'(i7,99e23.14)') step, time, &
+          total_px_part, total_py_part, total_pz_part, &
+          total_px_field, total_py_field, total_pz_field
+
+      IF (do_flush) CLOSE(unit=fu)
+    ENDIF
+
+  END SUBROUTINE momentum_history
 
 END MODULE diagnostics

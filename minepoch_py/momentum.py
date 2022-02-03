@@ -97,7 +97,7 @@ def momentum_check(fname='Data/momentum.dat', tolerance=None, label=None,
         plt.tight_layout()
 
         if savefig:
-            plt.savefig('energy_conservation.png')
+            plt.savefig('momentum_conservation.png')
 
     # If tolerance provided, check final energy conservation error
     if tolerance is not None:

@@ -422,6 +422,8 @@ MODULE shared_data
 
   INTEGER :: n_field_probes = 0
   INTEGER, DIMENSION(:,:), ALLOCATABLE :: field_probes
+  ! Output momentum time history
+  LOGICAL :: write_momentum = .TRUE.
 
   LOGICAL, DIMENSION(c_dir_x:c_dir_z,0:c_stagger_max) :: stagger
   INTEGER(i8) :: push_per_field = 5
@@ -433,8 +435,16 @@ MODULE shared_data
   REAL(num) :: laser_absorb_local = 0.0_num
   REAL(num) :: laser_injected = 0.0_num
   REAL(num) :: laser_absorbed = 0.0_num
-
+  ! Energy diagnostics
   REAL(num) :: total_particle_energy = 0.0_num
   REAL(num) :: total_field_energy = 0.0_num
+  ! Momentum diagnostics
+  REAL(num) :: total_px_part = 0.0_num
+  REAL(num) :: total_py_part = 0.0_num
+  REAL(num) :: total_pz_part = 0.0_num
+  REAL(num) :: total_px_field = 0.0_num
+  REAL(num) :: total_py_field = 0.0_num
+  REAL(num) :: total_pz_field = 0.0_num
+
 
 END MODULE shared_data
